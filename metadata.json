@@ -1,0 +1,6 @@
+{
+  "name": "KKG SIXVIBE - KKG6UP! Portal Guru Kelas 6 Pagu",
+  "description": "Portal Digital KKG Guru Kelas 6 Kecamatan Pagu - Jadwal, Modul Drive, Transparansi Kas, Database Guru, Rapat Online & Laporan Cetak",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
