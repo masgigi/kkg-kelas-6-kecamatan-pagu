@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { OnlineMeeting } from '../types';
-import { Video, Bell, ExternalLink, Copy, Check, Clock, Edit3, ShieldAlert, Sparkles, MessageSquare } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { Video, Bell, ExternalLink, Copy, Check, Clock, Edit3, ShieldAlert, Sparkles, MessageSquare, Loader2 } from 'lucide-react';
 
 interface MeetingViewProps {
   meeting: OnlineMeeting;
@@ -20,6 +21,14 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
     localStorage.getItem('kkg6up_meeting_notes') ||
       '• Catatan Rapat Online KKG Pagu:\n1. Kesepakatan kisi-kisi STS Semester 1.\n2. Jadwal piket pembuatan modul ajar.'
   );
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
+
+  useEffect(() => {
+    supabase.from('online_meetings').select('meeting_notes').eq('id', meeting.id || 'meet-1').maybeSingle().then(({ data }) => {
+      if (data?.meeting_notes) setNotes(data.meeting_notes);
+    });
+  }, [meeting.id]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(meeting.title);
@@ -37,6 +46,18 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
     const val = e.target.value;
     setNotes(val);
     localStorage.setItem('kkg6up_meeting_notes', val);
+    setNotesSaved(false);
+  };
+
+  const handleNotesBlur = async () => {
+    setNotesSaving(true);
+    const { error } = await supabase.from('online_meetings').update({ meeting_notes: notes }).eq('id', meeting.id || 'meet-1');
+    setNotesSaving(false);
+    if (error) {
+      console.error('Gagal menyimpan catatan rapat:', error);
+      return;
+    }
+    setNotesSaved(true);
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
@@ -207,15 +228,25 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
       <div className="bg-white rounded-3xl border-3 border-black p-5 shadow-[4px_4px_0_0_#000]">
         <div className="flex items-center justify-between mb-3 border-b-2 border-black pb-2">
           <h3 className="font-black text-sm text-black flex items-center gap-2">
-            <span>📝</span> Catatan & Scratchpad Rapat (Otomatis Tersimpan)
+            <span>📝</span> Catatan & Scratchpad Rapat
           </h3>
-          <span className="text-[10px] font-bold text-gray-500">Tersimpan di HP Anda</span>
+          <div className="flex items-center gap-2">
+            {notesSaving && <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Menyimpan...</span>}
+            {notesSaved && <span className="text-[10px] font-bold text-emerald-600">Tersimpan ✓</span>}
+            <button
+              onClick={handleNotesBlur}
+              className="px-3 py-1 bg-purple-600 text-white font-black text-[10px] rounded-lg border border-black shadow-[1px_1px_0_0_#000]"
+            >
+              Simpan Catatan
+            </button>
+          </div>
         </div>
 
         <textarea
           rows={6}
           value={notes}
           onChange={handleNotesChange}
+          onBlur={handleNotesBlur}
           placeholder="Tulis ringkasan rapat atau poin penting hasil diskusi di sini..."
           className="w-full p-3 rounded-2xl border-2 border-black font-bold text-xs bg-amber-50/50 focus:outline-none focus:ring-2 focus:ring-purple-600 leading-relaxed"
         />

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { supabase } from '../lib/supabase';
 import { CategoryDrive } from '../types';
-import { UploadCloud, X, CheckCircle2, FileText, Link, Folder, Sparkles } from 'lucide-react';
+import { UploadCloud, X, CheckCircle2, FileText, Link, Folder, Sparkles, Loader2 } from 'lucide-react';
 
 interface DriveUploadModalProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ export const DriveUploadModal: React.FC<DriveUploadModalProps> = ({
   const [driveUrl, setDriveUrl] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadMode, setUploadMode] = useState<'device' | 'link'>('device');
+  const [isUploading, setIsUploading] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   if (!isOpen) return null;
 
@@ -41,36 +44,42 @@ export const DriveUploadModal: React.FC<DriveUploadModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fileTitle.trim()) {
-      alert('Mohon isi Judul / Nama File.');
-      return;
-    }
-
-    if (uploadMode === 'link' && !driveUrl.trim()) {
-      alert('Mohon masukkan Link Google Drive file Anda.');
-      return;
-    }
-
-    if (uploadMode === 'device' && !selectedFile) {
-      alert('Mohon pilih file dari HP/Laptop Anda.');
-      return;
-    }
+    const errors: Record<string, string> = {};
+    if (!fileTitle.trim()) errors.fileTitle = 'Judul file wajib diisi.';
+    if (uploadMode === 'link' && !driveUrl.trim()) errors.driveUrl = 'Link Google Drive wajib diisi.';
+    if (uploadMode === 'device' && !selectedFile) errors.file = 'Pilih file dari HP/Laptop.';
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
+    setFormErrors({});
 
     const uploaderInfo = `${uploaderName.trim() || 'Guru Kelas 6'} (${schoolName.trim() || 'Kecamatan Pagu'})`;
+    setIsUploading(true);
+
+    let fileUrl = uploadMode === 'link' ? driveUrl.trim() : '';
+
+    if (uploadMode === 'device' && selectedFile) {
+      const filePath = `kkg-files/${selectedCategory}/${Date.now()}-${selectedFile.name}`;
+      const { error: uploadError } = await supabase.storage.from('kkg-files').upload(filePath, selectedFile);
+      if (uploadError) {
+        setIsUploading(false);
+        alert(`Gagal mengunggah file: ${uploadError.message}`);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from('kkg-files').getPublicUrl(filePath);
+      fileUrl = urlData.publicUrl;
+    }
 
     onUploadSuccess({
       title: fileTitle,
       category: selectedCategory,
       uploader: uploaderInfo,
-      fileUrl: uploadMode === 'link' ? driveUrl.trim() : 'https://drive.google.com/drive/folders/1baa5tRmJiob88KcN_igCr0WNNry00j2i?usp=sharing',
+      fileUrl,
       fileName: selectedFile ? selectedFile.name : fileTitle
     });
 
-    alert(`🎉 Berhasil! File "${fileTitle}" telah diunggah & dikirim ke folder ${selectedCategory} SIXDRIVE KKG!`);
-    
-    // Reset form
+    alert(`Berhasil! File "${fileTitle}" telah diunggah ke folder ${selectedCategory} SIXDRIVE KKG!`);
+    setIsUploading(false);
     setFileTitle('');
     setDriveUrl('');
     setSelectedFile(null);

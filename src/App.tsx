@@ -11,6 +11,7 @@ import {
 } from './types';
 import { storage } from './utils/storage';
 import { calculateCashSummary } from './utils/export';
+import { whenSupabaseReady } from './utils/supabaseSync';
 
 import { Navbar } from './components/Navbar';
 import { BottomNav } from './components/BottomNav';
@@ -33,6 +34,17 @@ import { LoginHistoryItem } from './types';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Remote sync runs in the background; cached/default data renders immediately.
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setIsLoading(false), 1500);
+    whenSupabaseReady().then(() => {
+      window.clearTimeout(timeout);
+      setIsLoading(false);
+    });
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   // Core Persistent State
   const [driveFolders, setDriveFolders] = useState<DriveFolder[]>(storage.getDriveFolders());
@@ -299,6 +311,21 @@ export default function App() {
 
   const nextSchedule = schedules.find((s) => s.status === 'Akan Datang' || s.status === 'Persiapan') || schedules[0];
 
+  // Show loading spinner while Supabase syncs
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 border-4 border-black border-t-purple-600 rounded-full animate-spin mx-auto" />
+          <div>
+            <p className="font-black text-lg text-black">⚡ KKG SIXVIBE</p>
+            <p className="text-sm font-bold text-gray-500">Menyinkronkan data dari server...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#faf8f5] text-gray-900 font-sans selection:bg-yellow-300 selection:text-black">
       {/* Top Ticker Notification Banner */}
@@ -453,8 +480,8 @@ export default function App() {
         initialFolder={editingDriveFolder}
       />
 
-      {/* Footer */}
-      <footer className="border-t-4 border-black bg-white py-8 px-4 text-center text-xs font-black text-gray-700 mb-16 md:mb-0">
+      {/* Footer - pb-20 untuk mobile agar tidak tertutup BottomNav */}
+      <footer className="border-t-4 border-black bg-white py-8 px-4 text-center text-xs font-black text-gray-700 pb-20 md:pb-8">
         <div className="max-w-7xl mx-auto space-y-2">
           <p className="flex items-center justify-center gap-1.5 text-sm font-black text-black">
             <span>⚡ KKG SIXVIBE • KKG6UP!</span>

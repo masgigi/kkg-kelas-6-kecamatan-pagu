@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ScheduleItem } from '../types';
-import { Calendar, MapPin, Clock, Download, ExternalLink, Bell, CheckCircle2, Video, Plus, Trash2, Edit3 } from 'lucide-react';
+import { Calendar, MapPin, Clock, Download, ExternalLink, Bell, CheckCircle2, Video, Plus, Trash2, Edit3, Search } from 'lucide-react';
 
 interface ScheduleViewProps {
   schedules: ScheduleItem[];
@@ -24,6 +24,17 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   setActiveTab
 }) => {
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('semua');
+
+  const filteredSchedules = schedules.filter((item) => {
+    const matchesSearch =
+      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.date.includes(searchTerm);
+    const matchesStatus = statusFilter === 'semua' || item.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusBadge = (status: ScheduleItem['status']) => {
     switch (status) {
@@ -96,9 +107,35 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         </div>
       </div>
 
+      {/* Search & Filter Bar */}
+      <div className="bg-white rounded-2xl border-3 border-black p-4 shadow-[4px_4px_0_0_#000] flex flex-col sm:flex-row gap-3 items-center">
+        <div className="relative w-full sm:w-auto flex-1">
+          <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="🔎 Cari jadwal, lokasi, atau tanggal..."
+            className="w-full pl-9 pr-3 py-2.5 rounded-2xl bg-gray-50 border-2 border-black font-bold text-xs focus:outline-none"
+          />
+        </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="py-2.5 px-4 rounded-2xl bg-gray-50 border-2 border-black font-black text-xs focus:outline-none"
+        >
+          <option value="semua">📋 Semua Status</option>
+          <option value="Akan Datang">🟢 Akan Datang</option>
+          <option value="Persiapan">🟡 Persiapan</option>
+          <option value="Terjadwal">🔵 Terjadwal</option>
+          <option value="Selesai">⚪ Selesai</option>
+        </select>
+      </div>
+
       {/* Schedule List Cards */}
       <div className="space-y-4">
-        {schedules.map((item) => (
+        {filteredSchedules.map((item) => (
           <div
             key={item.id}
             className="bg-white rounded-3xl border-3 border-black p-5 sm:p-6 shadow-[4px_4px_0_0_#000] transition-all hover:shadow-[6px_6px_0_0_#000]"
