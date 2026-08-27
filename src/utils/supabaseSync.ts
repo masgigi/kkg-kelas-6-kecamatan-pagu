@@ -18,7 +18,8 @@ const COLLECTIONS = {
   announcements: 'announcements',
   onlineMeeting: 'online_meetings',
   schoolAccounts: 'school_accounts',
-  loginHistory: 'login_history'
+  loginHistory: 'login_history',
+  attendance: 'attendance'
 };
 
 const STORAGE_KEYS = {
@@ -29,7 +30,8 @@ const STORAGE_KEYS = {
   announcements: 'kkg6up_announcements',
   onlineMeeting: 'kkg6up_online_meeting',
   schoolAccounts: 'kkg6up_school_accounts',
-  loginHistory: 'kkg6up_login_history'
+  loginHistory: 'kkg6up_login_history',
+  attendance: 'kkg6up_attendance'
 };
 
 let isSyncingFromSupabase = false;
@@ -94,6 +96,8 @@ function toDatabaseRow(table: string, item: any, index?: number): any {
       return { school_name: row.schoolName || row.school_name, password: row.password, teacher_name: row.teacherName, has_paid_kas_current_month: row.hasPaidKasCurrentMonth ?? false, last_attendance: row.lastAttendance };
     case COLLECTIONS.loginHistory:
       return { id: row.id, role: row.role, school_name: row.schoolName, teacher_name: row.teacherName, timestamp: row.timestamp, status: row.status };
+    case COLLECTIONS.attendance:
+      return { id: row.id, schedule_id: row.scheduleId, teacher_id: row.teacherId, teacher_name: row.teacherName, school: row.school, status: row.status, checked_in_at: row.checkedInAt, note: row.note };
     default:
       return row;
   }
@@ -109,6 +113,7 @@ function fromDatabaseRow(table: string, row: any): any {
     case COLLECTIONS.onlineMeeting: return { ...row, scheduledTime: row.scheduled_time, meetUrl: row.meet_url, agendaNote: row.agenda_note };
     case COLLECTIONS.schoolAccounts: return { ...row, schoolName: row.school_name, teacherName: row.teacher_name, hasPaidKasCurrentMonth: row.has_paid_kas_current_month, lastAttendance: row.last_attendance };
     case COLLECTIONS.loginHistory: return { ...row, schoolName: row.school_name, teacherName: row.teacher_name };
+    case COLLECTIONS.attendance: return { ...row, scheduleId: row.schedule_id, teacherId: row.teacher_id, teacherName: row.teacher_name, checkedInAt: row.checked_in_at };
     default: return row;
   }
 }
@@ -207,7 +212,8 @@ export function initSupabaseListeners(onUpdate: (key: string) => void) {
     { table: COLLECTIONS.driveFolders, key: STORAGE_KEYS.driveFolders, initial: initialDriveFolders },
     { table: COLLECTIONS.announcements, key: STORAGE_KEYS.announcements, initial: initialAnnouncements },
     { table: COLLECTIONS.schoolAccounts, key: STORAGE_KEYS.schoolAccounts, initial: initialSchoolAccounts },
-    { table: COLLECTIONS.loginHistory, key: STORAGE_KEYS.loginHistory, initial: initialLoginHistory }
+    { table: COLLECTIONS.loginHistory, key: STORAGE_KEYS.loginHistory, initial: initialLoginHistory },
+    { table: COLLECTIONS.attendance, key: STORAGE_KEYS.attendance, initial: [] }
   ];
 
   // Load all remote data once before realtime channels are subscribed.
@@ -313,7 +319,8 @@ export function initSupabaseListeners(onUpdate: (key: string) => void) {
     .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.schoolAccounts }, async () => {
       if (isSyncingFromSupabase) return;
       const { data } = await supabase.from(COLLECTIONS.schoolAccounts).select('*');
-      processSnapshotData(COLLECTIONS.schoolAccounts, STORAGE_KEYS.schoolAccounts, data || [], initialSchoolAccounts);
+      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.schoolAccounts, r));
+      processSnapshotData(COLLECTIONS.schoolAccounts, STORAGE_KEYS.schoolAccounts, rows, initialSchoolAccounts);
       onUpdate(STORAGE_KEYS.schoolAccounts);
     })
     .subscribe();
@@ -324,8 +331,21 @@ export function initSupabaseListeners(onUpdate: (key: string) => void) {
     .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.loginHistory }, async () => {
       if (isSyncingFromSupabase) return;
       const { data } = await supabase.from(COLLECTIONS.loginHistory).select('*');
-      processSnapshotData(COLLECTIONS.loginHistory, STORAGE_KEYS.loginHistory, data || [], initialLoginHistory);
+      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.loginHistory, r));
+      processSnapshotData(COLLECTIONS.loginHistory, STORAGE_KEYS.loginHistory, rows, initialLoginHistory);
       onUpdate(STORAGE_KEYS.loginHistory);
+    })
+    .subscribe();
+
+  // 9. Attendance
+  supabase
+    .channel('attendance-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.attendance }, async () => {
+      if (isSyncingFromSupabase) return;
+      const { data } = await supabase.from(COLLECTIONS.attendance).select('*');
+      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.attendance, r));
+      processSnapshotData(COLLECTIONS.attendance, STORAGE_KEYS.attendance, rows, []);
+      onUpdate(STORAGE_KEYS.attendance);
     })
     .subscribe();
 }

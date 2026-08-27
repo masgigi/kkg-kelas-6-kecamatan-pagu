@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import AttendanceForm from './components/AttendanceForm';
+import { AttendanceAdmin } from './components/AttendanceAdmin';
 import {
   DriveFolder,
   ScheduleItem,
@@ -7,7 +9,9 @@ import {
   AnnouncementItem,
   OnlineMeeting,
   SchoolAccount,
-  UserSession
+  UserSession,
+  AttendanceItem,
+  LoginHistoryItem
 } from './types';
 import { storage } from './utils/storage';
 import { calculateCashSummary } from './utils/export';
@@ -30,11 +34,11 @@ import { ScheduleModal } from './components/ScheduleModal';
 import { TeacherModal } from './components/TeacherModal';
 import { DriveModal } from './components/DriveModal';
 import { LoginHistoryModal } from './components/LoginHistoryModal';
-import { LoginHistoryItem } from './types';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [isLoading, setIsLoading] = useState(false);
+  const isPublicAttendance = new URLSearchParams(window.location.search).get('absen') === '1';
 
   // Remote sync runs in the background; cached/default data renders immediately.
   useEffect(() => {
@@ -57,6 +61,7 @@ export default function App() {
   const [userSession, setUserSession] = useState<UserSession>(storage.getUserSession());
   const [notifEnabled, setNotifEnabled] = useState<boolean>(storage.getNotifEnabled());
   const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>(storage.getLoginHistory());
+  const [attendance, setAttendance] = useState<AttendanceItem[]>(storage.getAttendance());
 
   // Modals state
   const [isTeacherLoginOpen, setIsTeacherLoginOpen] = useState(false);
@@ -82,9 +87,23 @@ export default function App() {
       setSchoolAccounts(storage.getSchoolAccounts());
       setUserSession(storage.getUserSession());
       setLoginHistory(storage.getLoginHistory());
+      setAttendance(storage.getAttendance());
     });
     return unsubscribe;
   }, []);
+
+  const handleSubmitAttendance = (record: Omit<AttendanceItem, 'id'>) => {
+    const newRecord: AttendanceItem = { ...record, id: `att-${Date.now()}` };
+    const updated = [newRecord, ...attendance];
+    setAttendance(updated);
+    storage.setAttendance(updated);
+  };
+
+  const handleDeleteAttendance = (id: string) => {
+    const updated = attendance.filter((item) => item.id !== id);
+    setAttendance(updated);
+    storage.setAttendance(updated);
+  };
 
   const { saldo } = calculateCashSummary(transactions);
   const isAdmin = userSession.role === 'admin';
@@ -326,6 +345,18 @@ export default function App() {
     );
   }
 
+  // Public attendance route (no login needed)
+  if (isPublicAttendance) {
+    return (
+      <AttendanceForm
+        schedules={schedules}
+        teachers={teachers}
+        attendance={attendance}
+        onSubmit={handleSubmitAttendance}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#faf8f5] text-gray-900 font-sans selection:bg-yellow-300 selection:text-black">
       {/* Top Ticker Notification Banner */}
@@ -356,6 +387,16 @@ export default function App() {
             totalTeachersCount={teachers.length}
             setActiveTab={setActiveTab}
             onOpenHelpModal={() => setIsHelpModalOpen(true)}
+          />
+        )}
+
+        {activeTab === 'attendance' && isAdmin && (
+          <AttendanceAdmin
+            schedules={schedules}
+            teachers={teachers}
+            attendance={attendance}
+            isAdmin={isAdmin}
+            onDeleteAttendance={handleDeleteAttendance}
           />
         )}
 

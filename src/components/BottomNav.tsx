@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Calendar, HardDrive, DollarSign, Users, Video, MessageSquare } from 'lucide-react';
+import { Home, Calendar, HardDrive, DollarSign, Users, Video, MessageSquare, CheckCircle2 } from 'lucide-react';
 
 interface BottomNavProps {
   activeTab: string;
@@ -15,11 +15,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab })
     { id: 'crew', label: 'Guru', icon: Users, color: 'bg-cyan-300' },
     { id: 'meeting', label: 'Rapat', icon: Video, color: 'bg-orange-400' },
     { id: 'update', label: 'Info', icon: MessageSquare, color: 'bg-lime-400' },
+    { id: 'attendance', label: 'Absen', icon: CheckCircle2, color: 'bg-violet-400' },
   ];
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-md border-t-4 border-black px-2 py-1.5 shadow-[0_-4px_0_0_#000]">
-      <div className="grid grid-cols-7 gap-1 max-w-md mx-auto">
+      <div className="grid grid-cols-8 gap-1 max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;

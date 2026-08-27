@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Shield, User, Bell, Video, Zap, Calendar, HardDrive, DollarSign, Users, MessageSquare, HelpCircle, History } from 'lucide-react';
+import { Sparkles, Shield, User, Bell, Video, Zap, Calendar, HardDrive, DollarSign, Users, MessageSquare, HelpCircle, History, CheckCircle2 } from 'lucide-react';
 import { UserSession } from '../types';
 
 interface NavbarProps {
@@ -28,7 +28,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'cash', label: '💸 Kas', icon: DollarSign },
     { id: 'crew', label: '👩‍🏫 Guru', icon: Users },
     { id: 'meeting', label: '🎥 Rapat Online', icon: Video },
-    { id: 'update', label: '📢 Info', icon: MessageSquare }
+    { id: 'update', label: '📢 Info', icon: MessageSquare },
+    { id: 'attendance', label: '✅ Absensi', icon: CheckCircle2 }
   ];
 
   return (

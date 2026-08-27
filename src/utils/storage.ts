@@ -7,7 +7,8 @@ import {
   OnlineMeeting,
   SchoolAccount,
   UserSession,
-  LoginHistoryItem
+  LoginHistoryItem,
+  AttendanceItem
 } from '../types';
 import {
   initialDriveFolders,
@@ -32,7 +33,8 @@ const STORAGE_KEYS = {
   SCHOOL_ACCOUNTS: 'kkg6up_school_accounts',
   USER_SESSION: 'kkg6up_user_session',
   NOTIF_ENABLED: 'kkg6up_notif_enabled',
-  LOGIN_HISTORY: 'kkg6up_login_history'
+  LOGIN_HISTORY: 'kkg6up_login_history',
+  ATTENDANCE: 'kkg6up_attendance'
 };
 
 // Helper for local storage with fallback
@@ -60,6 +62,7 @@ function setStoredData<T>(key: string, value: T): void {
     if (key === STORAGE_KEYS.ONLINE_MEETING) saveToSupabase('online_meetings', value);
     if (key === STORAGE_KEYS.SCHOOL_ACCOUNTS) saveToSupabase('school_accounts', value);
     if (key === STORAGE_KEYS.LOGIN_HISTORY) saveToSupabase('login_history', value);
+    if (key === STORAGE_KEYS.ATTENDANCE) saveToSupabase('attendance', value);
   } catch (err) {
     console.warn(`Error writing ${key} to localStorage:`, err);
   }
@@ -111,6 +114,9 @@ export const storage = {
 
   getLoginHistory: (): LoginHistoryItem[] => getStoredData(STORAGE_KEYS.LOGIN_HISTORY, initialLoginHistory),
   setLoginHistory: (data: LoginHistoryItem[]) => setStoredData(STORAGE_KEYS.LOGIN_HISTORY, data),
+
+  getAttendance: (): AttendanceItem[] => getStoredData(STORAGE_KEYS.ATTENDANCE, []),
+  setAttendance: (data: AttendanceItem[]) => setStoredData(STORAGE_KEYS.ATTENDANCE, data),
 
   resetToDefault: async () => {
     localStorage.clear();

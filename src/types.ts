@@ -87,6 +87,17 @@ export interface UserSession {
   teacherName?: string;
 }
 
+export interface AttendanceItem {
+  id: string;
+  scheduleId: string;
+  teacherId: string;
+  teacherName: string;
+  school: string;
+  status: 'Hadir' | 'Izin';
+  checkedInAt: string;
+  note?: string;
+}
+
 export interface LoginHistoryItem {
   id: string;
   role: 'teacher' | 'admin';
