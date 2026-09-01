@@ -16,6 +16,7 @@ import {
 import { storage } from './utils/storage';
 import { calculateCashSummary } from './utils/export';
 import { whenSupabaseReady } from './utils/supabaseSync';
+import { supabase, supabaseAdminEmail } from './lib/supabase';
 
 import { Navbar } from './components/Navbar';
 import { BottomNav } from './components/BottomNav';
@@ -63,6 +64,29 @@ export default function App() {
   const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>(storage.getLoginHistory());
   const [attendance, setAttendance] = useState<AttendanceItem[]>(storage.getAttendance());
 
+  // Admin access is valid only while an authorized Supabase Auth session exists.
+  useEffect(() => {
+    const applyAuthSession = (session: any) => {
+      const email = session?.user?.email?.toLowerCase();
+      const cachedSession = storage.getUserSession();
+      if (email && email === supabaseAdminEmail) {
+        const adminSession: UserSession = { isLoggedIn: true, role: 'admin' };
+        setUserSession(adminSession);
+        storage.setUserSession(adminSession);
+      } else if (cachedSession.role === 'admin') {
+        const guestSession: UserSession = { isLoggedIn: false, role: 'guest' };
+        setUserSession(guestSession);
+        storage.setUserSession(guestSession);
+      }
+    };
+
+    void supabase.auth.getSession().then(({ data }) => applyAuthSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      applyAuthSession(session);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   // Modals state
   const [isTeacherLoginOpen, setIsTeacherLoginOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
@@ -75,7 +99,7 @@ export default function App() {
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   const [editingDriveFolder, setEditingDriveFolder] = useState<DriveFolder | null>(null);
 
-  // Subscribe to multi-tab & Firestore real-time synchronization
+  // Subscribe to multi-tab & Supabase real-time synchronization
   useEffect(() => {
     const unsubscribe = storage.subscribeToChanges((key) => {
       setDriveFolders(storage.getDriveFolders());

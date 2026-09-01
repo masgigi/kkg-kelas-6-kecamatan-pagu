@@ -1,55 +1,43 @@
-import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured, supabase, supabaseAdminEmail } from '../lib/supabase';
 import {
-  initialDriveFolders,
-  initialSchedules,
-  initialTransactions,
-  initialTeachers,
   initialAnnouncements,
+  initialDriveFolders,
+  initialLoginHistory,
   initialOnlineMeeting,
+  initialSchedules,
   initialSchoolAccounts,
-  initialLoginHistory
+  initialTeachers,
+  initialTransactions
 } from '../data/initialData';
 
 const COLLECTIONS = {
-  schedules: 'schedules',
-  transactions: 'transactions',
-  teachers: 'teachers',
-  driveFolders: 'drive_folders',
-  announcements: 'announcements',
-  onlineMeeting: 'online_meetings',
-  schoolAccounts: 'school_accounts',
-  loginHistory: 'login_history',
-  attendance: 'attendance'
-};
+  schedules: 'schedules', transactions: 'transactions', teachers: 'teachers',
+  driveFolders: 'drive_folders', announcements: 'announcements',
+  onlineMeeting: 'online_meetings', schoolAccounts: 'school_accounts',
+  loginHistory: 'login_history', attendance: 'attendance'
+} as const;
 
 const STORAGE_KEYS = {
-  schedules: 'kkg6up_schedules',
-  transactions: 'kkg6up_transactions',
-  teachers: 'kkg6up_teachers',
-  driveFolders: 'kkg6up_drive_folders',
-  announcements: 'kkg6up_announcements',
-  onlineMeeting: 'kkg6up_online_meeting',
-  schoolAccounts: 'kkg6up_school_accounts',
-  loginHistory: 'kkg6up_login_history',
+  schedules: 'kkg6up_schedules', transactions: 'kkg6up_transactions',
+  teachers: 'kkg6up_teachers', driveFolders: 'kkg6up_drive_folders',
+  announcements: 'kkg6up_announcements', onlineMeeting: 'kkg6up_online_meeting',
+  schoolAccounts: 'kkg6up_school_accounts', loginHistory: 'kkg6up_login_history',
   attendance: 'kkg6up_attendance'
+} as const;
+
+const PRIMARY_KEYS: Record<string, string> = {
+  [COLLECTIONS.schoolAccounts]: 'school_name'
 };
 
 let isSyncingFromSupabase = false;
 let isSupabaseReady = false;
-let readyPromiseResolve: () => void = () => {};
+let readyPromiseResolve: () => void = () => undefined;
 const readyPromise = new Promise<void>((resolve) => { readyPromiseResolve = resolve; });
+const pendingSaves = new Map<string, Promise<void>>();
 
-export function isSupabaseSyncing(): boolean {
-  return isSyncingFromSupabase;
-}
-
-export function isSupabaseReadySynced(): boolean {
-  return isSupabaseReady;
-}
-
-export function whenSupabaseReady(): Promise<void> {
-  return readyPromise;
-}
+export function isSupabaseSyncing(): boolean { return isSyncingFromSupabase; }
+export function isSupabaseReadySynced(): boolean { return isSupabaseReady; }
+export function whenSupabaseReady(): Promise<void> { return readyPromise; }
 
 function markReady() {
   if (!isSupabaseReady) {
@@ -58,18 +46,17 @@ function markReady() {
   }
 }
 
-function sanitizeForSupabase(obj: any): any {
-  if (obj === null || obj === undefined) return null;
-  if (Array.isArray(obj)) return obj.map(sanitizeForSupabase);
-  if (typeof obj === 'object' && obj !== null) {
-    const cleaned: Record<string, any> = {};
-    for (const key of Object.keys(obj)) {
-      const val = obj[key];
-      if (val !== undefined) cleaned[key] = sanitizeForSupabase(val);
-    }
-    return cleaned;
+function sanitizeForSupabase(value: any): any {
+  if (value === null || value === undefined) return null;
+  if (Array.isArray(value)) return value.map(sanitizeForSupabase);
+  if (typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, item]) => item !== undefined)
+        .map(([key, item]) => [key, sanitizeForSupabase(item)])
+    );
   }
-  return obj;
+  return value;
 }
 
 function normalizeItem(item: any, index?: number): any {
@@ -118,94 +105,111 @@ function fromDatabaseRow(table: string, row: any): any {
   }
 }
 
-export async function saveToSupabase(collectionName: string, data: any) {
-  if (isSyncingFromSupabase) return;
+async function persistSnapshot(collectionName: string, data: any): Promise<void> {
+  if (!isSupabaseConfigured || isSyncingFromSupabase) return;
 
-  try {
-    if (collectionName === COLLECTIONS.onlineMeeting) {
-      const payload = toDatabaseRow(COLLECTIONS.onlineMeeting, data);
-      const { error } = await supabase
-        .from(COLLECTIONS.onlineMeeting)
-        .upsert(payload, { onConflict: 'id' });
-      if (error) throw error;
-    } else if (Array.isArray(data)) {
-      const items = data.map((item, i) => toDatabaseRow(collectionName, item, i));
-      const { error } = await supabase
-        .from(collectionName)
-        .upsert(items, { onConflict: 'id' });
-      if (error) throw error;
-    }
-  } catch (err) {
-    console.error('Supabase save error:', err);
+  const { data: authData } = await supabase.auth.getSession();
+  const isAdminSession =
+    authData.session?.user?.email?.toLowerCase() === supabaseAdminEmail;
+
+  // Public forms may insert a new attendance/login row, but only the admin is
+  // allowed to reconcile, update, or delete the complete remote collection.
+  if (
+    !isAdminSession &&
+    (collectionName === COLLECTIONS.attendance || collectionName === COLLECTIONS.loginHistory)
+  ) {
+    if (!Array.isArray(data) || data.length === 0) return;
+    const { error } = await supabase.from(collectionName).insert(toDatabaseRow(collectionName, data[0]));
+    if (error && error.code !== '23505') throw error;
+    return;
   }
+
+  if (collectionName === COLLECTIONS.onlineMeeting) {
+    const { error } = await supabase.from(COLLECTIONS.onlineMeeting)
+      .upsert(toDatabaseRow(COLLECTIONS.onlineMeeting, data), { onConflict: 'id' });
+    if (error) throw error;
+    return;
+  }
+
+  if (!Array.isArray(data)) return;
+  const primaryKey = PRIMARY_KEYS[collectionName] || 'id';
+  const rows = data.map((item, index) => toDatabaseRow(collectionName, item, index));
+
+  if (rows.length > 0) {
+    const { error } = await supabase.from(collectionName).upsert(rows, { onConflict: primaryKey });
+    if (error) throw error;
+  }
+
+  // Array setters represent the complete collection. Removing stale rows keeps
+  // remotely deleted items from appearing again after a realtime refresh.
+  const { data: existingRows, error: selectError } = await supabase.from(collectionName).select(primaryKey);
+  if (selectError) throw selectError;
+  const wantedKeys = new Set(rows.map((row) => String(row[primaryKey])));
+  const staleKeys = (existingRows || [])
+    .map((row: any) => row[primaryKey])
+    .filter((key: any) => !wantedKeys.has(String(key)));
+
+  if (staleKeys.length > 0) {
+    const { error: deleteError } = await supabase.from(collectionName).delete().in(primaryKey, staleKeys);
+    if (deleteError) throw deleteError;
+  }
+}
+
+export function saveToSupabase(collectionName: string, data: any): Promise<void> {
+  if (!isSupabaseConfigured || isSyncingFromSupabase) return Promise.resolve();
+  const previous = pendingSaves.get(collectionName) || Promise.resolve();
+  const current = previous.catch(() => undefined)
+    .then(() => persistSnapshot(collectionName, data))
+    .catch((error) => console.error(`Supabase save error (${collectionName}):`, error));
+  pendingSaves.set(collectionName, current);
+  current.finally(() => {
+    if (pendingSaves.get(collectionName) === current) pendingSaves.delete(collectionName);
+  });
+  return current;
 }
 
 export async function resetAndRebuildSupabaseData() {
-  isSyncingFromSupabase = true;
-  try {
-    const seedCollection = async (colName: string, items: any[]) => {
-      await supabase.from(colName).delete().neq('id', '__never_match__');
-      const normalized = items.map((item, i) => toDatabaseRow(colName, item, i));
-      const { error } = await supabase.from(colName).upsert(normalized, { onConflict: colName === COLLECTIONS.schoolAccounts ? 'school_name' : 'id' });
-      if (error) throw error;
-    };
-
-    await seedCollection(COLLECTIONS.schedules, initialSchedules);
-    await seedCollection(COLLECTIONS.transactions, initialTransactions);
-    await seedCollection(COLLECTIONS.teachers, initialTeachers);
-    await seedCollection(COLLECTIONS.driveFolders, initialDriveFolders);
-    await seedCollection(COLLECTIONS.announcements, initialAnnouncements);
-    await seedCollection(COLLECTIONS.onlineMeeting, [initialOnlineMeeting]);
-    await seedCollection(COLLECTIONS.schoolAccounts, initialSchoolAccounts);
-    await seedCollection(COLLECTIONS.loginHistory, initialLoginHistory);
-
-    console.log('Supabase collections successfully rebuilt!');
-  } catch (err) {
-    console.error('Error resetting Supabase collections:', err);
-  } finally {
-    isSyncingFromSupabase = false;
-  }
+  if (!isSupabaseConfigured) return;
+  const defaults = [
+    [COLLECTIONS.schedules, initialSchedules], [COLLECTIONS.transactions, initialTransactions],
+    [COLLECTIONS.teachers, initialTeachers], [COLLECTIONS.driveFolders, initialDriveFolders],
+    [COLLECTIONS.announcements, initialAnnouncements], [COLLECTIONS.schoolAccounts, initialSchoolAccounts],
+    [COLLECTIONS.loginHistory, initialLoginHistory], [COLLECTIONS.attendance, []]
+  ] as const;
+  for (const [collection, items] of defaults) await persistSnapshot(collection, items);
+  await persistSnapshot(COLLECTIONS.onlineMeeting, initialOnlineMeeting);
 }
 
-function processSnapshotData(
-  collectionName: string,
-  storageKey: string,
-  items: any[],
-  initialItems: any[]
-) {
-  let itemsToUse: any[];
-
-  if (items.length === 0) {
-    const localDataRaw = localStorage.getItem(storageKey);
-    let existingLocalData: any = null;
-    if (localDataRaw) {
-      try { existingLocalData = JSON.parse(localDataRaw); } catch { existingLocalData = null; }
-    }
-
-    if (existingLocalData && (Array.isArray(existingLocalData) ? existingLocalData.length > 0 : typeof existingLocalData === 'object')) {
-      itemsToUse = existingLocalData;
-      saveToSupabase(collectionName, existingLocalData);
-    } else {
-      itemsToUse = initialItems;
-      saveToSupabase(collectionName, initialItems);
-    }
-  } else {
-    itemsToUse = items;
-  }
-
+function writeLocalCache(storageKey: string, value: any) {
   isSyncingFromSupabase = true;
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(itemsToUse));
-  } catch (e) {
-    console.warn(`Error updating local cache for ${storageKey}:`, e);
-  }
-  isSyncingFromSupabase = false;
-
-  return itemsToUse;
+  try { localStorage.setItem(storageKey, JSON.stringify(value)); }
+  finally { isSyncingFromSupabase = false; }
 }
 
-export function initSupabaseListeners(onUpdate: (key: string) => void) {
-  const initialLoads = [
+function readLocalCache(storageKey: string): any {
+  try {
+    const value = localStorage.getItem(storageKey);
+    return value ? JSON.parse(value) : null;
+  } catch { return null; }
+}
+
+function processSnapshotData(collectionName: string, storageKey: string, items: any[], initialItems: any[], seedWhenEmpty: boolean) {
+  let itemsToUse = items;
+  if (seedWhenEmpty && items.length === 0) {
+    const localItems = readLocalCache(storageKey);
+    itemsToUse = Array.isArray(localItems) && localItems.length > 0 ? localItems : initialItems;
+    void saveToSupabase(collectionName, itemsToUse);
+  }
+  writeLocalCache(storageKey, itemsToUse);
+}
+
+export function initSupabaseListeners(onUpdate: (key: string) => void): () => void {
+  if (!isSupabaseConfigured) {
+    markReady();
+    return () => undefined;
+  }
+
+  const collections = [
     { table: COLLECTIONS.schedules, key: STORAGE_KEYS.schedules, initial: initialSchedules },
     { table: COLLECTIONS.transactions, key: STORAGE_KEYS.transactions, initial: initialTransactions },
     { table: COLLECTIONS.teachers, key: STORAGE_KEYS.teachers, initial: initialTeachers },
@@ -216,136 +220,56 @@ export function initSupabaseListeners(onUpdate: (key: string) => void) {
     { table: COLLECTIONS.attendance, key: STORAGE_KEYS.attendance, initial: [] }
   ];
 
-  // Load all remote data once before realtime channels are subscribed.
-  Promise.all(initialLoads.map(async ({ table, key, initial }) => {
-    const { data, error } = await supabase.from(table).select('*');
-    if (error) {
-      console.error(`Supabase load error (${table}):`, error);
-      return;
-    }
-    const rows = (data || []).map((r) => fromDatabaseRow(table, r));
-    processSnapshotData(table, key, rows, initial);
-    onUpdate(key);
-  })).then(async () => {
-    const { data, error } = await supabase.from(COLLECTIONS.onlineMeeting).select('*').eq('id', 'meet-1').maybeSingle();
-    if (!error && data) {
-      localStorage.setItem(STORAGE_KEYS.onlineMeeting, JSON.stringify(data));
-      onUpdate(STORAGE_KEYS.onlineMeeting);
-    } else if (!error && !data) {
-      await saveToSupabase(COLLECTIONS.onlineMeeting, initialOnlineMeeting);
-    }
-    markReady();
-  }).catch((error) => {
-    console.error('Supabase initial sync failed:', error);
-    markReady();
-  });
-  supabase
-    .channel('schedules-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.schedules }, async () => {
-      if (isSyncingFromSupabase) return;
-      const { data } = await supabase.from(COLLECTIONS.schedules).select('*');
-      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.schedules, r));
-      processSnapshotData(COLLECTIONS.schedules, STORAGE_KEYS.schedules, rows, initialSchedules);
-      onUpdate(STORAGE_KEYS.schedules);
-    })
-    .subscribe();
+  const refreshCollection = async (entry: typeof collections[number], seedWhenEmpty: boolean) => {
+    const { data, error } = await supabase.from(entry.table).select('*');
+    if (error) throw error;
+    const rows = (data || []).map((row) => fromDatabaseRow(entry.table, row));
+    processSnapshotData(entry.table, entry.key, rows, entry.initial, seedWhenEmpty);
+    onUpdate(entry.key);
+  };
 
-  // 2. Transactions
-  supabase
-    .channel('transactions-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.transactions }, async () => {
-      if (isSyncingFromSupabase) return;
-      const { data } = await supabase.from(COLLECTIONS.transactions).select('*');
-      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.transactions, r));
-      processSnapshotData(COLLECTIONS.transactions, STORAGE_KEYS.transactions, rows, initialTransactions);
-      onUpdate(STORAGE_KEYS.transactions);
-    })
-    .subscribe();
-
-  // 3. Teachers
-  supabase
-    .channel('teachers-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.teachers }, async () => {
-      if (isSyncingFromSupabase) return;
-      const { data } = await supabase.from(COLLECTIONS.teachers).select('*');
-      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.teachers, r));
-      processSnapshotData(COLLECTIONS.teachers, STORAGE_KEYS.teachers, rows, initialTeachers);
-      onUpdate(STORAGE_KEYS.teachers);
-    })
-    .subscribe();
-
-  // 4. Drive Folders
-  supabase
-    .channel('drive_folders-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.driveFolders }, async () => {
-      if (isSyncingFromSupabase) return;
-      const { data } = await supabase.from(COLLECTIONS.driveFolders).select('*');
-      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.driveFolders, r));
-      processSnapshotData(COLLECTIONS.driveFolders, STORAGE_KEYS.driveFolders, rows, initialDriveFolders);
-      onUpdate(STORAGE_KEYS.driveFolders);
-    })
-    .subscribe();
-
-  // 5. Announcements
-  supabase
-    .channel('announcements-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.announcements }, async () => {
-      if (isSyncingFromSupabase) return;
-      const { data } = await supabase.from(COLLECTIONS.announcements).select('*');
-      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.announcements, r));
-      processSnapshotData(COLLECTIONS.announcements, STORAGE_KEYS.announcements, rows, initialAnnouncements);
-      onUpdate(STORAGE_KEYS.announcements);
-    })
-    .subscribe();
-
-  // 6. Online Meeting
-  supabase
-    .channel('online_meetings-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.onlineMeeting }, async () => {
-      if (isSyncingFromSupabase) return;
-      const { data } = await supabase.from(COLLECTIONS.onlineMeeting).select('*').eq('id', 'meet-1').single();
+  Promise.allSettled(collections.map((entry) => refreshCollection(entry, true)))
+    .then(async (results) => {
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const table = collections[index].table;
+          // Protected collections are intentionally unavailable before admin login.
+          if (table !== COLLECTIONS.schoolAccounts && table !== COLLECTIONS.loginHistory) {
+            console.error(`Supabase initial sync failed (${table}):`, result.reason);
+          }
+        }
+      });
+      const { data, error } = await supabase.from(COLLECTIONS.onlineMeeting)
+        .select('*').eq('id', 'meet-1').maybeSingle();
+      if (error) throw error;
       if (data) {
-        isSyncingFromSupabase = true;
-        localStorage.setItem(STORAGE_KEYS.onlineMeeting, JSON.stringify(data));
-        isSyncingFromSupabase = false;
+        writeLocalCache(STORAGE_KEYS.onlineMeeting, fromDatabaseRow(COLLECTIONS.onlineMeeting, data));
         onUpdate(STORAGE_KEYS.onlineMeeting);
+      } else {
+        await saveToSupabase(COLLECTIONS.onlineMeeting, initialOnlineMeeting);
       }
     })
-    .subscribe();
+    .catch((error) => console.error('Supabase initial sync failed:', error))
+    .finally(markReady);
 
-  // 7. School Accounts
-  supabase
-    .channel('school_accounts-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.schoolAccounts }, async () => {
+  const channels: any[] = collections.map((entry) => supabase
+    .channel(`${entry.table}-changes`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: entry.table }, () => {
       if (isSyncingFromSupabase) return;
-      const { data } = await supabase.from(COLLECTIONS.schoolAccounts).select('*');
-      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.schoolAccounts, r));
-      processSnapshotData(COLLECTIONS.schoolAccounts, STORAGE_KEYS.schoolAccounts, rows, initialSchoolAccounts);
-      onUpdate(STORAGE_KEYS.schoolAccounts);
-    })
-    .subscribe();
+      void refreshCollection(entry, false)
+        .catch((error) => console.error(`Supabase realtime refresh error (${entry.table}):`, error));
+    }).subscribe());
 
-  // 8. Login History
-  supabase
-    .channel('login_history-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.loginHistory }, async () => {
+  channels.push(supabase.channel(`${COLLECTIONS.onlineMeeting}-changes`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.onlineMeeting }, async () => {
       if (isSyncingFromSupabase) return;
-      const { data } = await supabase.from(COLLECTIONS.loginHistory).select('*');
-      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.loginHistory, r));
-      processSnapshotData(COLLECTIONS.loginHistory, STORAGE_KEYS.loginHistory, rows, initialLoginHistory);
-      onUpdate(STORAGE_KEYS.loginHistory);
-    })
-    .subscribe();
+      const { data, error } = await supabase.from(COLLECTIONS.onlineMeeting)
+        .select('*').eq('id', 'meet-1').maybeSingle();
+      if (!error && data) {
+        writeLocalCache(STORAGE_KEYS.onlineMeeting, fromDatabaseRow(COLLECTIONS.onlineMeeting, data));
+        onUpdate(STORAGE_KEYS.onlineMeeting);
+      }
+    }).subscribe());
 
-  // 9. Attendance
-  supabase
-    .channel('attendance-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.attendance }, async () => {
-      if (isSyncingFromSupabase) return;
-      const { data } = await supabase.from(COLLECTIONS.attendance).select('*');
-      const rows = (data || []).map((r) => fromDatabaseRow(COLLECTIONS.attendance, r));
-      processSnapshotData(COLLECTIONS.attendance, STORAGE_KEYS.attendance, rows, []);
-      onUpdate(STORAGE_KEYS.attendance);
-    })
-    .subscribe();
+  return () => { channels.forEach((channel) => { void supabase.removeChannel(channel); }); };
 }

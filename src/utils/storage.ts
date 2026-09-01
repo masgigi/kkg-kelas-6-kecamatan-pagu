@@ -174,7 +174,7 @@ export const storage = {
     }
 
     // 2. Real-time Supabase listener for multi-user / multi-device sync
-    initSupabaseListeners((key) => {
+    const unsubscribeSupabase = initSupabaseListeners((key) => {
       callback(key);
     });
 
@@ -182,6 +182,7 @@ export const storage = {
       if (broadcastChannel) {
         broadcastChannel.removeEventListener('message', listener);
       }
+      unsubscribeSupabase();
     };
   }
 };

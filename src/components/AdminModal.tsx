@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { UserSession } from '../types';
 import { Shield, Key, Lock, CheckCircle2, AlertCircle, LogOut, RefreshCw, Download, Upload, History } from 'lucide-react';
 import { storage } from '../utils/storage';
+import { supabase, supabaseAdminEmail } from '../lib/supabase';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -22,39 +23,92 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 }) => {
   const [passwordInput, setPasswordInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
-  const handleAdminAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passwordInput.trim() === 'igigih') {
-      setUserSession({
-        isLoggedIn: true,
-        role: 'admin'
+  const activateAdminSession = () => {
+    setUserSession({
+      isLoggedIn: true,
+      role: 'admin'
+    });
+
+    if (onRecordLoginHistory) {
+      onRecordLoginHistory({
+        role: 'admin',
+        schoolName: 'Korwil Pagu (Admin KKG)',
+        teacherName: 'Pengurus Utama KKG Pagu'
       });
-
-      if (onRecordLoginHistory) {
-        onRecordLoginHistory({
-          role: 'admin',
-          schoolName: 'Korwil Pagu (Admin KKG)',
-          teacherName: 'Pengurus Utama KKG Pagu'
-        });
-      }
-
-      setPasswordInput('');
-      setErrorMsg('');
-      onClose();
-    } else {
-      setErrorMsg('Password Admin salah!');
     }
   };
 
-  const handleLogout = () => {
+  const handleAdminAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setInfoMsg('');
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: supabaseAdminEmail,
+        password: passwordInput
+      });
+      if (error) throw error;
+      if (data.user?.email?.toLowerCase() !== supabaseAdminEmail) {
+        await supabase.auth.signOut();
+        throw new Error('Akun ini tidak terdaftar sebagai admin KKG.');
+      }
+      activateAdminSession();
+      setPasswordInput('');
+      onClose();
+      window.setTimeout(() => window.location.reload(), 150);
+    } catch (error: any) {
+      setErrorMsg(
+        error?.message === 'Invalid login credentials'
+          ? 'Akun belum dibuat atau password salah. Untuk pemakaian pertama, tekan “Buat Akun Admin”.'
+          : error?.message || 'Login admin gagal.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateAdmin = async () => {
+    setErrorMsg('');
+    setInfoMsg('');
+    if (passwordInput.length < 8) {
+      setErrorMsg('Buat password minimal 8 karakter.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: supabaseAdminEmail,
+        password: passwordInput
+      });
+      if (error) throw error;
+      if (data.session) {
+        activateAdminSession();
+        onClose();
+        window.setTimeout(() => window.location.reload(), 150);
+      } else {
+        setInfoMsg(`Akun dibuat. Buka email ${supabaseAdminEmail}, tekan tautan konfirmasi, lalu kembali untuk masuk.`);
+      }
+    } catch (error: any) {
+      setErrorMsg(error?.message || 'Pembuatan akun admin gagal.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUserSession({
       isLoggedIn: false,
       role: 'guest'
     });
+    window.location.reload();
   };
 
   const handleBackup = () => {
@@ -178,14 +232,20 @@ export const AdminModal: React.FC<AdminModalProps> = ({
           <form onSubmit={handleAdminAuth} className="space-y-3">
             <div>
               <label className="block text-xs font-black text-black mb-1">
-                Masukkan Password Admin
+                Email Admin
+              </label>
+              <div className="mb-3 rounded-xl border-2 border-black bg-gray-100 px-3 py-2.5 text-xs font-black">
+                {supabaseAdminEmail}
+              </div>
+              <label className="block text-xs font-black text-black mb-1">
+                Password Admin Supabase
               </label>
               <div className="relative">
                 <Key className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="password"
                   required
-                  placeholder="Masukkan password admin"
+                  placeholder="Minimal 8 karakter"
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-black font-bold text-xs focus:outline-none focus:ring-2 focus:ring-purple-600"
@@ -200,11 +260,28 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               </div>
             )}
 
+            {infoMsg && (
+              <div className="bg-emerald-100 border-2 border-black text-emerald-900 text-xs font-bold p-2.5 rounded-xl flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{infoMsg}</span>
+              </div>
+            )}
+
             <button
               type="submit"
+              disabled={isSubmitting}
               className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] transition-transform active:scale-95"
             >
-              MASUK MODE ADMIN →
+              {isSubmitting ? 'MEMPROSES...' : 'MASUK MODE ADMIN →'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCreateAdmin}
+              disabled={isSubmitting}
+              className="w-full py-2.5 bg-cyan-300 hover:bg-cyan-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000]"
+            >
+              PEMAKAIAN PERTAMA: BUAT AKUN ADMIN
             </button>
           </form>
         )}
