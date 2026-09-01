@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { SchoolAccount, UserSession } from '../types';
+import { UserSession } from '../types';
 import { User, Key, CheckCircle2, AlertCircle, LogOut, Printer, School, ShieldCheck, History } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface TeacherLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  schoolAccounts: SchoolAccount[];
   userSession: UserSession;
   setUserSession: (session: UserSession) => void;
   onOpenLoginHistory?: () => void;
@@ -15,56 +15,52 @@ interface TeacherLoginModalProps {
 export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
   isOpen,
   onClose,
-  schoolAccounts,
   userSession,
   setUserSession,
   onOpenLoginHistory,
   onRecordLoginHistory
 }) => {
-  const [selectedSchool, setSelectedSchool] = useState(schoolAccounts[0]?.schoolName || '');
+  const [selectedSchool, setSelectedSchool] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!isOpen) return null;
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
-    const found = schoolAccounts.find(
-      (acc) => acc.schoolName === selectedSchool
-    );
-
-    if (!found) {
-      setErrorMsg('Sekolah tidak ditemukan dalam database.');
+    if (!selectedSchool.trim()) {
+      setErrorMsg('Masukkan nama sekolah terlebih dahulu.');
       return;
     }
 
-    // Password input check: match registered password OR match school name normalized
-    const inputClean = passwordInput.trim().toLowerCase();
-    const passClean = found.password.trim().toLowerCase();
-    const schoolClean = found.schoolName.trim().toLowerCase();
+    const { data, error } = await supabase.rpc('verify_school_login', {
+      p_school_name: selectedSchool.trim(),
+      p_password: passwordInput
+    });
+    const verified = Array.isArray(data) ? data[0] : data;
 
-    if (inputClean === passClean || inputClean === schoolClean || inputClean === 'pagu123') {
+    if (!error && verified) {
       setUserSession({
         isLoggedIn: true,
         role: 'teacher',
-        schoolName: found.schoolName,
-        teacherName: found.teacherName
+        schoolName: verified.school_name,
+        teacherName: verified.teacher_name
       });
 
       if (onRecordLoginHistory) {
         onRecordLoginHistory({
           role: 'teacher',
-          schoolName: found.schoolName,
-          teacherName: found.teacherName
+          schoolName: verified.school_name,
+          teacherName: verified.teacher_name
         });
       }
 
       setPasswordInput('');
       onClose();
     } else {
-      setErrorMsg(`Password salah! Masukkan kode password sekolah (contoh: ${found.password}).`);
+      setErrorMsg(error ? 'Login belum dapat diproses. Silakan coba lagi.' : 'Password sekolah salah.');
     }
   };
 
@@ -74,8 +70,6 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
       role: 'guest'
     });
   };
-
-  const loggedAccount = schoolAccounts.find((a) => a.schoolName === userSession.schoolName);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -115,24 +109,6 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
               </p>
             </div>
 
-            {loggedAccount && (
-              <div className="bg-purple-50 rounded-2xl border-2 border-black p-3 text-xs font-bold text-gray-800 space-y-1">
-                <p className="flex items-center justify-between">
-                  <span>Status Kas Juli/Agustus:</span>
-                  <span
-                    className={`font-black px-2 py-0.5 rounded border border-black ${
-                      loggedAccount.hasPaidKasCurrentMonth
-                        ? 'bg-emerald-300 text-black'
-                        : 'bg-red-300 text-black'
-                    }`}
-                  >
-                    {loggedAccount.hasPaidKasCurrentMonth ? '🟢 LUNAS' : '🔴 BELUM'}
-                  </span>
-                </p>
-                <p>📅 Kehadiran KKG Terakhir: {loggedAccount.lastAttendance}</p>
-              </div>
-            )}
-
             <div className="flex gap-2">
               <button
                 onClick={() => {
@@ -158,19 +134,16 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
           <form onSubmit={handleLoginSubmit} className="space-y-3">
             <div>
               <label className="block text-xs font-black text-black mb-1">
-                Pilih Sekolah Asal
+                Nama Sekolah Asal
               </label>
-              <select
+              <input
+                type="text"
+                required
                 value={selectedSchool}
                 onChange={(e) => setSelectedSchool(e.target.value)}
+                placeholder="Contoh: SDN BULUPASAR"
                 className="w-full p-2.5 rounded-xl border-2 border-black font-bold text-xs"
-              >
-                {schoolAccounts.map((acc) => (
-                  <option key={acc.schoolName} value={acc.schoolName}>
-                    {acc.schoolName} ({acc.teacherName})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
@@ -182,14 +155,14 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
                 <input
                   type="password"
                   required
-                  placeholder={`Contoh: ${selectedSchool.toLowerCase().replace(/\s+/g, '')}`}
+                  placeholder="Masukkan password sekolah"
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-black font-bold text-xs"
                 />
               </div>
               <p className="text-[10px] text-gray-500 font-bold mt-1">
-                💡 Tip Password default: nama sekolah tanpa spasi (misal: <code>sdnpagu1</code>, <code>sdnsitimerto1</code>).
+                Password diperiksa secara aman oleh server Supabase dan tidak disimpan di halaman web.
               </p>
             </div>
 

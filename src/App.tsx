@@ -8,7 +8,6 @@ import {
   TeacherItem,
   AnnouncementItem,
   OnlineMeeting,
-  SchoolAccount,
   UserSession,
   AttendanceItem,
   LoginHistoryItem
@@ -58,7 +57,6 @@ export default function App() {
   const [teachers, setTeachers] = useState<TeacherItem[]>(storage.getTeachers());
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(storage.getAnnouncements());
   const [onlineMeeting, setOnlineMeeting] = useState<OnlineMeeting>(storage.getOnlineMeeting());
-  const [schoolAccounts, setSchoolAccounts] = useState<SchoolAccount[]>(storage.getSchoolAccounts());
   const [userSession, setUserSession] = useState<UserSession>(storage.getUserSession());
   const [notifEnabled, setNotifEnabled] = useState<boolean>(storage.getNotifEnabled());
   const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>(storage.getLoginHistory());
@@ -108,7 +106,6 @@ export default function App() {
       setTeachers(storage.getTeachers());
       setAnnouncements(storage.getAnnouncements());
       setOnlineMeeting(storage.getOnlineMeeting());
-      setSchoolAccounts(storage.getSchoolAccounts());
       setUserSession(storage.getUserSession());
       setLoginHistory(storage.getLoginHistory());
       setAttendance(storage.getAttendance());
@@ -494,7 +491,6 @@ export default function App() {
       <TeacherLoginModal
         isOpen={isTeacherLoginOpen}
         onClose={() => setIsTeacherLoginOpen(false)}
-        schoolAccounts={schoolAccounts}
         userSession={userSession}
         setUserSession={handleSetUserSession}
         onOpenLoginHistory={() => setIsLoginHistoryOpen(true)}

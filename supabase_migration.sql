@@ -1,5 +1,7 @@
 -- KKG6UP! Portal Guru Kelas 6 - secure Supabase schema
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 CREATE TABLE IF NOT EXISTS public.drive_folders (
   id TEXT PRIMARY KEY, title TEXT NOT NULL, file_count INTEGER DEFAULT 0,
   url TEXT, color TEXT, description TEXT, icon_name TEXT,
@@ -34,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.online_meetings (
   created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS public.school_accounts (
-  school_name TEXT PRIMARY KEY, password TEXT NOT NULL, teacher_name TEXT,
+  school_name TEXT PRIMARY KEY, password_hash TEXT NOT NULL, teacher_name TEXT,
   has_paid_kas_current_month BOOLEAN DEFAULT FALSE, last_attendance TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -69,6 +71,28 @@ $$;
 REVOKE ALL ON FUNCTION public.is_kkg_admin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_kkg_admin() TO authenticated;
 
+-- Teacher passwords are checked server-side; password hashes never leave Postgres.
+CREATE OR REPLACE FUNCTION public.verify_school_login(p_school_name TEXT, p_password TEXT)
+RETURNS TABLE (
+  school_name TEXT,
+  teacher_name TEXT,
+  has_paid_kas_current_month BOOLEAN,
+  last_attendance TEXT
+)
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT sa.school_name, sa.teacher_name, sa.has_paid_kas_current_month, sa.last_attendance
+  FROM public.school_accounts AS sa
+  WHERE sa.school_name = p_school_name
+    AND sa.password_hash = extensions.crypt(p_password, sa.password_hash)
+  LIMIT 1
+$$;
+REVOKE ALL ON FUNCTION public.verify_school_login(TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.verify_school_login(TEXT, TEXT) TO anon, authenticated;
+
 -- Public portal content: everyone may read; only the authorized admin may write.
 DO $$ DECLARE t TEXT; BEGIN
   FOREACH t IN ARRAY ARRAY[
@@ -89,6 +113,27 @@ DO $$ DECLARE t TEXT; BEGIN
     EXECUTE format('GRANT INSERT, UPDATE, DELETE ON TABLE public.%I TO authenticated', t);
   END LOOP;
 END $$;
+
+-- Contact details and meeting passcodes remain stored, but are not readable
+-- through the anonymous public client.
+DROP POLICY IF EXISTS "Public read" ON public.teachers;
+DROP POLICY IF EXISTS "Admin read" ON public.teachers;
+CREATE POLICY "Public read" ON public.teachers FOR SELECT TO anon USING (true);
+CREATE POLICY "Admin read" ON public.teachers FOR SELECT TO authenticated
+  USING ((SELECT public.is_kkg_admin()));
+REVOKE SELECT ON TABLE public.teachers FROM anon, authenticated;
+GRANT SELECT (id, name, school, role, avatar_url) ON public.teachers TO anon;
+GRANT SELECT ON TABLE public.teachers TO authenticated;
+
+DROP POLICY IF EXISTS "Public read" ON public.online_meetings;
+DROP POLICY IF EXISTS "Admin read" ON public.online_meetings;
+CREATE POLICY "Public read" ON public.online_meetings FOR SELECT TO anon USING (true);
+CREATE POLICY "Admin read" ON public.online_meetings FOR SELECT TO authenticated
+  USING ((SELECT public.is_kkg_admin()));
+REVOKE SELECT ON TABLE public.online_meetings FROM anon, authenticated;
+GRANT SELECT (id, title, scheduled_time, meet_url, status, agenda_note, meeting_notes)
+  ON public.online_meetings TO anon;
+GRANT SELECT ON TABLE public.online_meetings TO authenticated;
 
 -- School account passwords and login history are never publicly readable.
 ALTER TABLE public.school_accounts ENABLE ROW LEVEL SECURITY;

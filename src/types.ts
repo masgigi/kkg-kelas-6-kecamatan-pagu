@@ -45,8 +45,8 @@ export interface TeacherItem {
   school: string;
   nip?: string;
   role: string;
-  phone: string;
-  email: string;
+  phone?: string;
+  email?: string;
   avatarUrl?: string;
   isLoggedInDefaultPass?: string; // default school password
 }
@@ -74,7 +74,6 @@ export interface OnlineMeeting {
 
 export interface SchoolAccount {
   schoolName: string;
-  password: string; // Password input = nama sekolah / code
   teacherName: string;
   hasPaidKasCurrentMonth: boolean;
   lastAttendance: string;

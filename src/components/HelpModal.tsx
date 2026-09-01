@@ -319,17 +319,17 @@ export const HelpModal: React.FC<HelpModalProps> = ({
                   Apakah data yang ditambah admin akan tersimpan dan muncul di perangkat lain?
                 </h4>
                 <p className="text-xs text-gray-700 leading-relaxed">
-                  Ya! Seluruh perubahan data jadwal, kas, pengumuman, dan kontak guru tersimpan secara terpusat di Cloud Firestore (Real-time Database). Semua pengunjung yang membuka link web di beda perangkat dapat melihat update terbaru secara langsung tanpa perlu login.
+                    Ya! Seluruh perubahan data tersimpan secara terpusat di Supabase. Informasi publik akan diperbarui di perangkat lain, sedangkan data pribadi hanya dapat dikelola oleh admin yang sudah masuk.
                 </p>
               </div>
 
               <div className="p-3.5 bg-gray-50 rounded-2xl border-2 border-black">
                 <h4 className="font-black text-black text-xs mb-1 flex items-center gap-1.5">
                   <HelpCircle className="w-4 h-4 text-purple-600" />
-                  Bagaimana jika lupa PIN Pengurus / Admin?
+                  Bagaimana jika lupa password Admin?
                 </h4>
                 <p className="text-xs text-gray-700 leading-relaxed">
-                  PIN standar pengurus adalah <b>1234</b>. PIN ini dapat digunakan oleh Ketua, Sekretaris, atau Bendahara KKG Kelas 6 Kecamatan Pagu.
+                  Gunakan menu pemulihan password Supabase pada email admin resmi. Jangan membagikan password admin kepada orang lain.
                 </p>
               </div>
             </div>

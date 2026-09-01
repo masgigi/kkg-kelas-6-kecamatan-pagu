@@ -227,12 +227,12 @@ export const AttendanceAdmin: React.FC<AttendanceAdminProps> = ({
             <div class="sig-box">
               <p>Mengetahui,<br/><strong>Bendahara KKG Pagu</strong></p>
               <div class="sig-space"></div>
-              <p><u><strong>Dewi Lestari, S.Pd.</strong></u></p>
+              <p><u><strong>Bendahara KKG</strong></u></p>
             </div>
             <div class="sig-box">
               <p>Pagu, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/><strong>Ketua KKG Kelas 6 Pagu</strong></p>
               <div class="sig-space"></div>
-              <p><u><strong>Anisa Rahmawati, S.Pd.</strong></u></p>
+              <p><u><strong>Ketua KKG</strong></u></p>
             </div>
           </div>
           <script>

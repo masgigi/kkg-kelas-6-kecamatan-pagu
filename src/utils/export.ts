@@ -62,8 +62,8 @@ export function exportTransactionsToCSV(transactions: TransactionItem[], monthYe
 export function printMonthlyReport(
   transactions: TransactionItem[],
   monthLabel: string = 'Juli / Agustus 2026',
-  signedByLeader: string = 'Anisa Rahmawati, S.Pd.',
-  signedByTreasurer: string = 'Dewi Lestari, S.Pd.'
+  signedByLeader: string = 'Ketua KKG',
+  signedByTreasurer: string = 'Bendahara KKG'
 ) {
   const { totalMasuk, totalKeluar, saldo } = calculateCashSummary(transactions);
 

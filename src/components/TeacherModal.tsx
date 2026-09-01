@@ -17,26 +17,17 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [school, setSchool] = useState('');
-  const [nip, setNip] = useState('');
   const [role, setRole] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
 
   useEffect(() => {
     if (initialTeacher) {
       setName(initialTeacher.name);
       setSchool(initialTeacher.school);
-      setNip(initialTeacher.nip || '');
       setRole(initialTeacher.role || 'Guru Kelas VI');
-      setPhone(initialTeacher.phone || '');
-      setEmail(initialTeacher.email || '');
     } else {
       setName('');
       setSchool('SDN SEMEN');
-      setNip('');
       setRole('Guru Kelas VI');
-      setPhone('');
-      setEmail('');
     }
   }, [initialTeacher, isOpen]);
 
@@ -53,10 +44,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
       ...(initialTeacher ? { id: initialTeacher.id } : { id: 't-' + Date.now() }),
       name: name.trim().toUpperCase(),
       school: school.trim().toUpperCase(),
-      nip: nip.trim() || '-',
-      role: role.trim() || 'Guru Kelas VI',
-      phone: phone.trim() || '081234567890',
-      email: email.trim() || `${name.toLowerCase().replace(/[^a-z]/g, '')}@gmail.com`
+      role: role.trim() || 'Guru Kelas VI'
     };
 
     onSave(teacherData);
@@ -78,7 +66,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 {initialTeacher ? 'Edit Data Guru' : 'Tambah Guru Baru'}
               </h2>
               <p className="text-xs font-bold text-black/80">
-                Input Nama, NIP/NIPPPK, dan Sekolah
+                Input nama, sekolah, dan peran guru
               </p>
             </div>
           </div>
@@ -105,24 +93,10 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Contoh: HERMIN TRIYATI"
+                placeholder="Contoh: NAMA GURU"
                 className="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-black font-bold text-xs shadow-[2px_2px_0_0_#000] focus:outline-none focus:ring-2 focus:ring-purple-600 uppercase"
               />
             </div>
-          </div>
-
-          {/* NIP / NIPPPK */}
-          <div>
-            <label className="block text-xs font-black text-black mb-1">
-              NIP / NIPPPK
-            </label>
-            <input
-              type="text"
-              value={nip}
-              onChange={(e) => setNip(e.target.value)}
-              placeholder="Contoh: 19760317 202321 2 003"
-              className="w-full px-3 py-2.5 rounded-xl border-2 border-black font-bold text-xs shadow-[2px_2px_0_0_#000] focus:outline-none focus:ring-2 focus:ring-purple-600"
-            />
           </div>
 
           {/* Nama Sekolah */}

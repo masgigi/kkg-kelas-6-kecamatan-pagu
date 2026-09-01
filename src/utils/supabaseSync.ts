@@ -5,7 +5,6 @@ import {
   initialLoginHistory,
   initialOnlineMeeting,
   initialSchedules,
-  initialSchoolAccounts,
   initialTeachers,
   initialTransactions
 } from '../data/initialData';
@@ -13,7 +12,7 @@ import {
 const COLLECTIONS = {
   schedules: 'schedules', transactions: 'transactions', teachers: 'teachers',
   driveFolders: 'drive_folders', announcements: 'announcements',
-  onlineMeeting: 'online_meetings', schoolAccounts: 'school_accounts',
+  onlineMeeting: 'online_meetings',
   loginHistory: 'login_history', attendance: 'attendance'
 } as const;
 
@@ -21,12 +20,13 @@ const STORAGE_KEYS = {
   schedules: 'kkg6up_schedules', transactions: 'kkg6up_transactions',
   teachers: 'kkg6up_teachers', driveFolders: 'kkg6up_drive_folders',
   announcements: 'kkg6up_announcements', onlineMeeting: 'kkg6up_online_meeting',
-  schoolAccounts: 'kkg6up_school_accounts', loginHistory: 'kkg6up_login_history',
+  loginHistory: 'kkg6up_login_history',
   attendance: 'kkg6up_attendance'
 } as const;
 
-const PRIMARY_KEYS: Record<string, string> = {
-  [COLLECTIONS.schoolAccounts]: 'school_name'
+const SELECT_COLUMNS: Record<string, string> = {
+  [COLLECTIONS.teachers]: 'id,name,school,role,avatar_url',
+  [COLLECTIONS.onlineMeeting]: 'id,title,scheduled_time,meet_url,status,agenda_note,meeting_notes'
 };
 
 let isSyncingFromSupabase = false;
@@ -79,8 +79,6 @@ function toDatabaseRow(table: string, item: any, index?: number): any {
       return { id: row.id, title: row.title, date: row.date, author: row.author, content: row.content, tags: row.tags ?? [], is_pinned: row.isPinned ?? false, image_url: row.imageUrl };
     case COLLECTIONS.onlineMeeting:
       return { id: row.id || 'meet-1', title: row.title, scheduled_time: row.scheduledTime, meet_url: row.meetUrl, status: row.status, agenda_note: row.agendaNote, passcode: row.passcode };
-    case COLLECTIONS.schoolAccounts:
-      return { school_name: row.schoolName || row.school_name, password: row.password, teacher_name: row.teacherName, has_paid_kas_current_month: row.hasPaidKasCurrentMonth ?? false, last_attendance: row.lastAttendance };
     case COLLECTIONS.loginHistory:
       return { id: row.id, role: row.role, school_name: row.schoolName, teacher_name: row.teacherName, timestamp: row.timestamp, status: row.status };
     case COLLECTIONS.attendance:
@@ -98,7 +96,6 @@ function fromDatabaseRow(table: string, row: any): any {
     case COLLECTIONS.teachers: return { ...row, avatarUrl: row.avatar_url };
     case COLLECTIONS.announcements: return { ...row, isPinned: row.is_pinned, imageUrl: row.image_url };
     case COLLECTIONS.onlineMeeting: return { ...row, scheduledTime: row.scheduled_time, meetUrl: row.meet_url, agendaNote: row.agenda_note };
-    case COLLECTIONS.schoolAccounts: return { ...row, schoolName: row.school_name, teacherName: row.teacher_name, hasPaidKasCurrentMonth: row.has_paid_kas_current_month, lastAttendance: row.last_attendance };
     case COLLECTIONS.loginHistory: return { ...row, schoolName: row.school_name, teacherName: row.teacher_name };
     case COLLECTIONS.attendance: return { ...row, scheduleId: row.schedule_id, teacherId: row.teacher_id, teacherName: row.teacher_name, checkedInAt: row.checked_in_at };
     default: return row;
@@ -132,7 +129,7 @@ async function persistSnapshot(collectionName: string, data: any): Promise<void>
   }
 
   if (!Array.isArray(data)) return;
-  const primaryKey = PRIMARY_KEYS[collectionName] || 'id';
+  const primaryKey = 'id';
   const rows = data.map((item, index) => toDatabaseRow(collectionName, item, index));
 
   if (rows.length > 0) {
@@ -173,7 +170,7 @@ export async function resetAndRebuildSupabaseData() {
   const defaults = [
     [COLLECTIONS.schedules, initialSchedules], [COLLECTIONS.transactions, initialTransactions],
     [COLLECTIONS.teachers, initialTeachers], [COLLECTIONS.driveFolders, initialDriveFolders],
-    [COLLECTIONS.announcements, initialAnnouncements], [COLLECTIONS.schoolAccounts, initialSchoolAccounts],
+    [COLLECTIONS.announcements, initialAnnouncements],
     [COLLECTIONS.loginHistory, initialLoginHistory], [COLLECTIONS.attendance, []]
   ] as const;
   for (const [collection, items] of defaults) await persistSnapshot(collection, items);
@@ -215,13 +212,14 @@ export function initSupabaseListeners(onUpdate: (key: string) => void): () => vo
     { table: COLLECTIONS.teachers, key: STORAGE_KEYS.teachers, initial: initialTeachers },
     { table: COLLECTIONS.driveFolders, key: STORAGE_KEYS.driveFolders, initial: initialDriveFolders },
     { table: COLLECTIONS.announcements, key: STORAGE_KEYS.announcements, initial: initialAnnouncements },
-    { table: COLLECTIONS.schoolAccounts, key: STORAGE_KEYS.schoolAccounts, initial: initialSchoolAccounts },
     { table: COLLECTIONS.loginHistory, key: STORAGE_KEYS.loginHistory, initial: initialLoginHistory },
     { table: COLLECTIONS.attendance, key: STORAGE_KEYS.attendance, initial: [] }
   ];
 
   const refreshCollection = async (entry: typeof collections[number], seedWhenEmpty: boolean) => {
-    const { data, error } = await supabase.from(entry.table).select('*');
+    const { data, error } = await supabase
+      .from(entry.table)
+      .select(SELECT_COLUMNS[entry.table] || '*');
     if (error) throw error;
     const rows = (data || []).map((row) => fromDatabaseRow(entry.table, row));
     processSnapshotData(entry.table, entry.key, rows, entry.initial, seedWhenEmpty);
@@ -234,13 +232,13 @@ export function initSupabaseListeners(onUpdate: (key: string) => void): () => vo
         if (result.status === 'rejected') {
           const table = collections[index].table;
           // Protected collections are intentionally unavailable before admin login.
-          if (table !== COLLECTIONS.schoolAccounts && table !== COLLECTIONS.loginHistory) {
+          if (table !== COLLECTIONS.loginHistory) {
             console.error(`Supabase initial sync failed (${table}):`, result.reason);
           }
         }
       });
       const { data, error } = await supabase.from(COLLECTIONS.onlineMeeting)
-        .select('*').eq('id', 'meet-1').maybeSingle();
+        .select(SELECT_COLUMNS[COLLECTIONS.onlineMeeting]).eq('id', 'meet-1').maybeSingle();
       if (error) throw error;
       if (data) {
         writeLocalCache(STORAGE_KEYS.onlineMeeting, fromDatabaseRow(COLLECTIONS.onlineMeeting, data));
@@ -264,7 +262,7 @@ export function initSupabaseListeners(onUpdate: (key: string) => void): () => vo
     .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.onlineMeeting }, async () => {
       if (isSyncingFromSupabase) return;
       const { data, error } = await supabase.from(COLLECTIONS.onlineMeeting)
-        .select('*').eq('id', 'meet-1').maybeSingle();
+        .select(SELECT_COLUMNS[COLLECTIONS.onlineMeeting]).eq('id', 'meet-1').maybeSingle();
       if (!error && data) {
         writeLocalCache(STORAGE_KEYS.onlineMeeting, fromDatabaseRow(COLLECTIONS.onlineMeeting, data));
         onUpdate(STORAGE_KEYS.onlineMeeting);

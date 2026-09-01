@@ -60,7 +60,6 @@ function setStoredData<T>(key: string, value: T): void {
     if (key === STORAGE_KEYS.DRIVE_FOLDERS) saveToSupabase('drive_folders', value);
     if (key === STORAGE_KEYS.ANNOUNCEMENTS) saveToSupabase('announcements', value);
     if (key === STORAGE_KEYS.ONLINE_MEETING) saveToSupabase('online_meetings', value);
-    if (key === STORAGE_KEYS.SCHOOL_ACCOUNTS) saveToSupabase('school_accounts', value);
     if (key === STORAGE_KEYS.LOGIN_HISTORY) saveToSupabase('login_history', value);
     if (key === STORAGE_KEYS.ATTENDANCE) saveToSupabase('attendance', value);
   } catch (err) {
