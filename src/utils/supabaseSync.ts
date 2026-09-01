@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase, supabaseAdminEmail } from '../lib/supabase';
+import type { AttendanceItem, ScheduleItem, TeacherItem } from '../types';
 import {
   initialAnnouncements,
   initialDriveFolders,
@@ -38,6 +39,12 @@ const pendingSaves = new Map<string, Promise<void>>();
 export function isSupabaseSyncing(): boolean { return isSyncingFromSupabase; }
 export function isSupabaseReadySynced(): boolean { return isSupabaseReady; }
 export function whenSupabaseReady(): Promise<void> { return readyPromise; }
+
+export interface PublicAttendanceData {
+  schedules: ScheduleItem[];
+  teachers: TeacherItem[];
+  attendance: AttendanceItem[];
+}
 
 function markReady() {
   if (!isSupabaseReady) {
@@ -100,6 +107,42 @@ function fromDatabaseRow(table: string, row: any): any {
     case COLLECTIONS.attendance: return { ...row, scheduleId: row.schedule_id, teacherId: row.teacher_id, teacherName: row.teacher_name, checkedInAt: row.checked_in_at };
     default: return row;
   }
+}
+
+export async function loadPublicAttendanceData(): Promise<PublicAttendanceData> {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase belum dikonfigurasi.');
+  }
+
+  const [schedulesResult, teachersResult, attendanceResult] = await Promise.all([
+    supabase.from(COLLECTIONS.schedules).select('*').order('date', { ascending: true }),
+    supabase.from(COLLECTIONS.teachers)
+      .select(SELECT_COLUMNS[COLLECTIONS.teachers])
+      .order('name', { ascending: true }),
+    supabase.from(COLLECTIONS.attendance).select('*')
+  ]);
+
+  const firstError = schedulesResult.error || teachersResult.error || attendanceResult.error;
+  if (firstError) throw firstError;
+
+  return {
+    schedules: (schedulesResult.data || []).map((row) => fromDatabaseRow(COLLECTIONS.schedules, row)),
+    teachers: (teachersResult.data || []).map((row) => fromDatabaseRow(COLLECTIONS.teachers, row)),
+    attendance: (attendanceResult.data || []).map((row) => fromDatabaseRow(COLLECTIONS.attendance, row))
+  };
+}
+
+export function subscribeToPublicAttendanceChanges(onChange: () => void): () => void {
+  if (!isSupabaseConfigured) return () => undefined;
+
+  const channel = supabase
+    .channel('public-attendance-form-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.schedules }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.teachers }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: COLLECTIONS.attendance }, onChange)
+    .subscribe();
+
+  return () => { void supabase.removeChannel(channel); };
 }
 
 async function persistSnapshot(collectionName: string, data: any): Promise<void> {

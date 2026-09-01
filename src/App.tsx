@@ -14,7 +14,11 @@ import {
 } from './types';
 import { storage } from './utils/storage';
 import { calculateCashSummary } from './utils/export';
-import { whenSupabaseReady } from './utils/supabaseSync';
+import {
+  loadPublicAttendanceData,
+  subscribeToPublicAttendanceChanges,
+  whenSupabaseReady
+} from './utils/supabaseSync';
 import { supabase, supabaseAdminEmail } from './lib/supabase';
 
 import { Navbar } from './components/Navbar';
@@ -37,7 +41,7 @@ import { LoginHistoryModal } from './components/LoginHistoryModal';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const isPublicAttendance =
     normalizedPath === '/absensi' ||
@@ -45,13 +49,14 @@ export default function App() {
 
   // Remote sync runs in the background; cached/default data renders immediately.
   useEffect(() => {
+    if (isPublicAttendance) return;
     const timeout = window.setTimeout(() => setIsLoading(false), 1500);
     whenSupabaseReady().then(() => {
       window.clearTimeout(timeout);
       setIsLoading(false);
     });
     return () => window.clearTimeout(timeout);
-  }, []);
+  }, [isPublicAttendance]);
 
   // Core Persistent State
   const [driveFolders, setDriveFolders] = useState<DriveFolder[]>(storage.getDriveFolders());
@@ -64,6 +69,46 @@ export default function App() {
   const [notifEnabled, setNotifEnabled] = useState<boolean>(storage.getNotifEnabled());
   const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>(storage.getLoginHistory());
   const [attendance, setAttendance] = useState<AttendanceItem[]>(storage.getAttendance());
+  const [attendanceLoadError, setAttendanceLoadError] = useState('');
+  const [attendanceReloadToken, setAttendanceReloadToken] = useState(0);
+
+  // The public attendance page reads its required data directly from Supabase.
+  // It never falls back to bundled sample data, so it stays consistent with the portal.
+  useEffect(() => {
+    if (!isPublicAttendance) return;
+
+    let isCancelled = false;
+    let requestVersion = 0;
+
+    const refreshAttendanceData = async (showSpinner: boolean) => {
+      const currentVersion = ++requestVersion;
+      if (showSpinner) setIsLoading(true);
+      try {
+        const remoteData = await loadPublicAttendanceData();
+        if (isCancelled || currentVersion !== requestVersion) return;
+        setSchedules(remoteData.schedules);
+        setTeachers(remoteData.teachers);
+        setAttendance(remoteData.attendance);
+        setAttendanceLoadError('');
+      } catch (error) {
+        if (isCancelled || currentVersion !== requestVersion) return;
+        console.error('Gagal memuat data absensi dari Supabase:', error);
+        setAttendanceLoadError('Data jadwal dan guru belum berhasil dimuat dari server.');
+      } finally {
+        if (!isCancelled && currentVersion === requestVersion) setIsLoading(false);
+      }
+    };
+
+    void refreshAttendanceData(true);
+    const unsubscribe = subscribeToPublicAttendanceChanges(() => {
+      void refreshAttendanceData(false);
+    });
+
+    return () => {
+      isCancelled = true;
+      unsubscribe();
+    };
+  }, [attendanceReloadToken, isPublicAttendance]);
 
   // Admin access is valid only while an authorized Supabase Auth session exists.
   useEffect(() => {
@@ -102,6 +147,7 @@ export default function App() {
 
   // Subscribe to multi-tab & Supabase real-time synchronization
   useEffect(() => {
+    if (isPublicAttendance) return () => undefined;
     const unsubscribe = storage.subscribeToChanges((key) => {
       setDriveFolders(storage.getDriveFolders());
       setSchedules(storage.getSchedules());
@@ -114,7 +160,7 @@ export default function App() {
       setAttendance(storage.getAttendance());
     });
     return unsubscribe;
-  }, []);
+  }, [isPublicAttendance]);
 
   const handleSubmitAttendance = (record: Omit<AttendanceItem, 'id'>) => {
     const newRecord: AttendanceItem = { ...record, id: `att-${Date.now()}` };
@@ -366,6 +412,26 @@ export default function App() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (isPublicAttendance && attendanceLoadError) {
+    return (
+      <main className="min-h-screen bg-yellow-300 p-5 text-black flex items-center justify-center">
+        <section className="w-full max-w-lg border-4 border-black bg-white p-6 text-center shadow-[8px_8px_0_#000] space-y-4">
+          <p className="text-5xl" aria-hidden="true">⚠️</p>
+          <h1 className="text-2xl font-black">Data Absensi Belum Terhubung</h1>
+          <p className="font-bold">{attendanceLoadError}</p>
+          <button
+            type="button"
+            onClick={() => setAttendanceReloadToken((value) => value + 1)}
+            className="w-full border-2 border-black bg-purple-600 px-5 py-3 font-black text-white shadow-[4px_4px_0_#000]"
+          >
+            Coba Lagi
+          </button>
+          <a href="/" className="inline-block border-b-2 border-black font-black">Kembali ke Portal</a>
+        </section>
+      </main>
     );
   }
 
