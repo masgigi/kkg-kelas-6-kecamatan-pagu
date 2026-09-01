@@ -58,7 +58,7 @@ export const AttendanceAdmin: React.FC<AttendanceAdminProps> = ({
   const [selectedScheduleId, setSelectedScheduleId] = useState('semua');
   const [selectedStatus, setSelectedStatus] = useState('semua');
   const [viewMode, setViewMode] = useState<'table' | 'summary'>('table');
-  const attendanceUrl = `${window.location.origin}${window.location.pathname}?absen=1`;
+  const attendanceUrl = `${window.location.origin}/absensi`;
 
   /* ---- derived data ---- */
 

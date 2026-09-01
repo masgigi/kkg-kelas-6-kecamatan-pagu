@@ -38,7 +38,10 @@ import { LoginHistoryModal } from './components/LoginHistoryModal';
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [isLoading, setIsLoading] = useState(false);
-  const isPublicAttendance = new URLSearchParams(window.location.search).get('absen') === '1';
+  const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  const isPublicAttendance =
+    normalizedPath === '/absensi' ||
+    new URLSearchParams(window.location.search).get('absen') === '1';
 
   // Remote sync runs in the background; cached/default data renders immediately.
   useEffect(() => {
