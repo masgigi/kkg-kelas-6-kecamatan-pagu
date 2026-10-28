@@ -15,7 +15,21 @@ export const featureLinks = [
 ];
 
 export function FeatureLinks({ onNavigate }: { onNavigate: (tab: string) => void }) {
-  return <section className="space-y-4" aria-label="Jelajahi KKG"><div><h2 className="font-black text-2xl">🌈 Ruang Kolaborasi KKG</h2><p className="text-sm font-bold text-gray-600 mt-1">Kenali komunitasnya, temukan ilmunya, bagikan inspirasinya.</p></div><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{featureLinks.map(link => <button key={link.id} onClick={() => onNavigate(link.id)} className={`kkg-feature-card ${link.color} text-left p-5 rounded-2xl border-3 border-black shadow-[4px_4px_0_#000] transition-transform hover:-translate-y-1 active:translate-y-0`}><span aria-hidden="true" className="text-3xl">{link.emoji}</span><h3 className="font-black mt-3">{link.title}</h3><p className="font-semibold text-xs mt-1">{link.note}</p><ArrowRight className="mt-3" size={18} /></button>)}</div></section>;
+  return <section className="space-y-4" aria-label="Jelajahi KKG">
+    <div><h2 className="font-black text-2xl">🌈 Ruang Kolaborasi KKG</h2><p className="text-sm font-bold text-gray-600 mt-1">Kenali komunitasnya, temukan ilmunya, bagikan inspirasinya.</p></div>
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 py-2 pr-2">
+      {featureLinks.map(link => <button
+        key={link.id}
+        onClick={() => onNavigate(link.id)}
+        className={`kkg-feature-card ${link.color} group flex min-h-52 flex-col items-start text-left p-5 sm:p-6 rounded-2xl border-3 border-black shadow-[5px_5px_0_#000]`}
+      >
+        <span aria-hidden="true" className="kkg-feature-icon inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/20 border-2 border-current/25 text-3xl">{link.emoji}</span>
+        <span className="relative z-10 mt-4 block text-xl sm:text-2xl font-black leading-tight tracking-tight text-balance">{link.title}</span>
+        <span className="relative z-10 mt-2 block text-sm sm:text-base font-semibold leading-snug max-w-72">{link.note}</span>
+        <span aria-hidden="true" className="kkg-feature-arrow mt-auto pt-4 inline-flex items-center justify-center"><ArrowRight size={21} strokeWidth={3} /></span>
+      </button>)}
+    </div>
+  </section>;
 }
 
 export function PortalHub({ view, items, isAdmin, loading, error, refresh, teachers, navigate }: {
