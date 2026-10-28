@@ -9,7 +9,7 @@ interface DriveViewProps {
   onAddDriveFolder?: () => void;
   onEditDriveFolder?: (folder: DriveFolder) => void;
   onDeleteDriveFolder?: (id: string) => void;
-  onUploadSuccess?: (fileInfo: any) => void;
+  onUploadSuccess?: (fileInfo: any) => Promise<void>;
 }
 
 export const DriveView: React.FC<DriveViewProps> = ({
@@ -46,9 +46,9 @@ export const DriveView: React.FC<DriveViewProps> = ({
     }
   };
 
-  const handleUploadComplete = (fileInfo: any) => {
+  const handleUploadComplete = async (fileInfo: any) => {
     if (onUploadSuccess) {
-      onUploadSuccess(fileInfo);
+      await onUploadSuccess(fileInfo);
     }
   };
 
@@ -72,13 +72,13 @@ export const DriveView: React.FC<DriveViewProps> = ({
 
           <div className="flex flex-wrap items-center gap-2">
             {/* UNGGAH DRIVE BUTTON */}
-            <button
+            {isAdmin && <button
               onClick={() => setIsUploadModalOpen(true)}
               className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center gap-1.5 transition-transform active:scale-95"
             >
               <UploadCloud className="w-4 h-4" />
               <span>📤 Unggah File ke Drive</span>
-            </button>
+            </button>}
 
             {/* INDUK GOOGLE DRIVE BUTTON */}
             <a

@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+@layer components {
+  .portal-button { @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-black font-black text-xs shadow-[2px_2px_0_#000] transition-transform active:translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed; }
+  .portal-input { @apply block w-full bg-white text-black p-3 mt-1 rounded-xl border-2 border-black text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600; }
+  .portal-label { @apply block text-sm font-black; }
+  .portal-error { @apply bg-rose-100 text-rose-950 border-2 border-black rounded-xl p-4 text-sm font-bold; }
+}
+
+button, a, input, select, textarea { outline-offset: 4px; }
+.portal-dialog { overflow-y: auto; overscroll-behavior: contain; }
+body:has(dialog[open]) { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

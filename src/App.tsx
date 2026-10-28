@@ -20,6 +20,9 @@ import {
   whenSupabaseReady
 } from './utils/supabaseSync';
 import { supabase, supabaseAdminEmail } from './lib/supabase';
+import { usePortalContent, saveContent } from './features/portal/api';
+import { PortalHub } from './features/portal/PortalHub';
+import { blankContent, todayJakarta, upcomingSchedule } from './features/portal/model';
 
 import { Navbar } from './components/Navbar';
 import { BottomNav } from './components/BottomNav';
@@ -40,7 +43,20 @@ import { DriveModal } from './components/DriveModal';
 import { LoginHistoryModal } from './components/LoginHistoryModal';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('home');
+  const validTabs = ['home', 'profile', 'program', 'stories', 'services', 'schedule', 'drive', 'cash', 'crew', 'meeting', 'update', 'attendance'];
+  const [activeTab, setActiveTabState] = useState(() => validTabs.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');
+  const [resourceMode, setResourceMode] = useState<'catalog' | 'folders'>('catalog');
+  const setActiveTab = (tab: string) => {
+    if (!validTabs.includes(tab)) return;
+    setActiveTabState(tab);
+    window.history.pushState(null, '', `#${tab}`);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  useEffect(() => {
+    const restoreTab = () => setActiveTabState(validTabs.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');
+    window.addEventListener('popstate', restoreTab);
+    return () => window.removeEventListener('popstate', restoreTab);
+  }, []);
   const [isLoading, setIsLoading] = useState(true);
   const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const isPublicAttendance =
@@ -65,7 +81,10 @@ export default function App() {
   const [teachers, setTeachers] = useState<TeacherItem[]>(storage.getTeachers());
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(storage.getAnnouncements());
   const [onlineMeeting, setOnlineMeeting] = useState<OnlineMeeting>(storage.getOnlineMeeting());
-  const [userSession, setUserSession] = useState<UserSession>(storage.getUserSession());
+  const [userSession, setUserSession] = useState<UserSession>(() => {
+    const cached = storage.getUserSession();
+    return cached.role === 'admin' ? { isLoggedIn: false, role: 'guest' } : cached;
+  });
   const [notifEnabled, setNotifEnabled] = useState<boolean>(storage.getNotifEnabled());
   const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>(storage.getLoginHistory());
   const [attendance, setAttendance] = useState<AttendanceItem[]>(storage.getAttendance());
@@ -177,6 +196,9 @@ export default function App() {
 
   const { saldo } = calculateCashSummary(transactions);
   const isAdmin = userSession.role === 'admin';
+  const portal = usePortalContent(isAdmin);
+  const visibleAnnouncements = announcements.filter(a => !a.expiresOn || a.expiresOn >= todayJakarta());
+  const portalProps = { ...portal, isAdmin, teachers, navigate: setActiveTab };
 
   const handleRecordLoginHistory = (entry: { role: 'teacher' | 'admin'; schoolName: string; teacherName: string }) => {
     const now = new Date();
@@ -206,34 +228,16 @@ export default function App() {
     storage.setLoginHistory([]);
   };
 
-  const handleUploadDriveSuccess = (fileInfo: {
+  const handleUploadDriveSuccess = async (fileInfo: {
     title: string;
     category: string;
     uploader: string;
+    fileUrl?: string;
   }) => {
-    // Increment file count in selected drive folder
-    const updatedFolders = driveFolders.map((f) => {
-      if (f.title === fileInfo.category) {
-        return { ...f, fileCount: f.fileCount + 1 };
-      }
-      return f;
-    });
-    setDriveFolders(updatedFolders);
-    storage.setDriveFolders(updatedFolders);
-
-    // Broadcast announcement notification
-    const newNotif: AnnouncementItem = {
-      id: 'ann-' + Date.now(),
-      title: `📁 Berkas Baru: ${fileInfo.title}`,
-      date: 'Hari ini',
-      author: fileInfo.uploader,
-      content: `File "${fileInfo.title}" telah berhasil diunggah oleh ${fileInfo.uploader} ke folder ${fileInfo.category} SIXDRIVE KKG.`,
-      tags: ['Drive', fileInfo.category],
-      isPinned: true
-    };
-    const updatedAnn = [newNotif, ...announcements];
-    setAnnouncements(updatedAnn);
-    storage.setAnnouncements(updatedAnn);
+    await saveContent({ ...blankContent('resource'), title: fileInfo.title, author_name: fileInfo.uploader,
+      link_url: fileInfo.fileUrl || '', details: { category: fileInfo.category }, status: 'published' });
+    await portal.refresh();
+    setResourceMode('catalog');
   };
 
   // Explicit mutation handlers that push updates to Firestore and local cache
@@ -337,21 +341,19 @@ export default function App() {
     }
   };
 
-  const handleAddAnnouncement = (ann: Omit<AnnouncementItem, 'id'>) => {
-    const newAnn: AnnouncementItem = {
-      ...ann,
-      id: 'ann-' + Date.now()
-    };
-    const updated = [newAnn, ...announcements];
-    setAnnouncements(updated);
-    storage.setAnnouncements(updated);
+  const handleSaveAnnouncement = async (ann: AnnouncementItem) => {
+    const { error } = await supabase.from('announcements').upsert({ id: ann.id, title: ann.title,
+      date: ann.date, author: ann.author, content: ann.content, tags: ann.tags, is_pinned: ann.isPinned,
+      image_url: ann.imageUrl || null, expires_on: ann.expiresOn || null, attachment_url: ann.attachmentUrl || null });
+    if (error) throw new Error(`Pengumuman belum tersimpan: ${error.message}`);
+    setAnnouncements(current => [ann, ...current.filter(a => a.id !== ann.id)]);
   };
 
-  const handleDeleteAnnouncement = (id: string) => {
+  const handleDeleteAnnouncement = async (id: string) => {
     if (confirm('Hapus pengumuman ini?')) {
-      const updated = announcements.filter((a) => a.id !== id);
-      setAnnouncements(updated);
-      storage.setAnnouncements(updated);
+      const { error } = await supabase.from('announcements').delete().eq('id', id);
+      if (error) throw new Error(`Pengumuman belum dihapus: ${error.message}`);
+      setAnnouncements(current => current.filter(a => a.id !== id));
     }
   };
 
@@ -398,7 +400,7 @@ export default function App() {
     storage.setNotifEnabled(enabled);
   };
 
-  const nextSchedule = schedules.find((s) => s.status === 'Akan Datang' || s.status === 'Persiapan') || schedules[0];
+  const nextSchedule = upcomingSchedule(schedules);
 
   // Show loading spinner while Supabase syncs
   if (isLoading) {
@@ -472,13 +474,20 @@ export default function App() {
           <Dashboard
             schedules={schedules}
             driveFolders={driveFolders}
-            announcements={announcements}
+            announcements={visibleAnnouncements}
             cashBalance={saldo}
             totalTeachersCount={teachers.length}
             setActiveTab={setActiveTab}
             onOpenHelpModal={() => setIsHelpModalOpen(true)}
           />
         )}
+
+        {activeTab === 'profile' && <PortalHub view="profile" {...portalProps} />}
+        {activeTab === 'program' && <PortalHub view="program" {...portalProps} />}
+        {activeTab === 'stories' && <PortalHub view="stories" {...portalProps} />}
+        {activeTab === 'services' && <PortalHub view="services" {...portalProps} />}
+
+        {activeTab === 'attendance' && !isAdmin && <section className="bg-yellow-200 border-4 border-black rounded-3xl p-7 mb-10 space-y-4"><h1 className="text-2xl font-black">✅ Presensi Kegiatan KKG</h1><p className="font-semibold">Isi kehadiran melalui formulir presensi. Rekap dikelola oleh pengurus.</p><a href="/absensi" className="portal-button bg-purple-600 text-white">Buka formulir presensi →</a></section>}
 
         {activeTab === 'attendance' && isAdmin && (
           <AttendanceAdmin
@@ -504,6 +513,12 @@ export default function App() {
         )}
 
         {activeTab === 'drive' && (
+          <>
+          <div className="flex flex-wrap gap-3 mb-6" aria-label="Sumber belajar">
+            <button aria-pressed={resourceMode === 'catalog'} className={`portal-button ${resourceMode === 'catalog' ? 'bg-yellow-300' : 'bg-white'}`} onClick={() => setResourceMode('catalog')}>📚 Katalog Sumber Belajar</button>
+            <button aria-pressed={resourceMode === 'folders'} className={`portal-button ${resourceMode === 'folders' ? 'bg-purple-300' : 'bg-white'}`} onClick={() => setResourceMode('folders')}>📁 Folder SIXDRIVE</button>
+          </div>
+          {resourceMode === 'catalog' ? <PortalHub view="resources" {...portalProps} /> :
           <DriveView
             driveFolders={driveFolders}
             isAdmin={isAdmin}
@@ -512,6 +527,8 @@ export default function App() {
             onDeleteDriveFolder={handleDeleteDriveFolder}
             onUploadSuccess={handleUploadDriveSuccess}
           />
+          }
+          </>
         )}
 
         {activeTab === 'cash' && (
@@ -547,7 +564,7 @@ export default function App() {
           <UpdateView
             announcements={announcements}
             isAdmin={isAdmin}
-            onAddAnnouncement={handleAddAnnouncement}
+            onSaveAnnouncement={handleSaveAnnouncement}
             onDeleteAnnouncement={handleDeleteAnnouncement}
           />
         )}
@@ -567,6 +584,7 @@ export default function App() {
       />
 
       <AdminModal
+        onNavigate={setActiveTab}
         isOpen={isAdminModalOpen}
         onClose={() => setIsAdminModalOpen(false)}
         userSession={userSession}
@@ -611,7 +629,7 @@ export default function App() {
       />
 
       {/* Footer - pb-20 untuk mobile agar tidak tertutup BottomNav */}
-      <footer className="border-t-4 border-black bg-white py-8 px-4 text-center text-xs font-black text-gray-700 pb-20 md:pb-8">
+      <footer className="border-t-4 border-black bg-white py-8 px-4 text-center text-xs font-black text-gray-700 pb-24 lg:pb-8">
         <div className="max-w-7xl mx-auto space-y-2">
           <p className="flex items-center justify-center gap-1.5 text-sm font-black text-black">
             <span>⚡ KKG SIXVIBE • KKG6UP!</span>

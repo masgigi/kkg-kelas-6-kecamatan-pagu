@@ -60,6 +60,8 @@ export interface AnnouncementItem {
   tags: string[];
   isPinned?: boolean;
   imageUrl?: string;
+  expiresOn?: string;
+  attachmentUrl?: string;
 }
 
 export interface OnlineMeeting {

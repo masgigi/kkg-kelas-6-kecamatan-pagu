@@ -23,13 +23,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const tabs = [
     { id: 'home', label: '🏠 Home', icon: Sparkles },
-    { id: 'schedule', label: '📅 KKG', icon: Calendar },
-    { id: 'drive', label: '📚 Drive', icon: HardDrive },
-    { id: 'cash', label: '💸 Kas', icon: DollarSign },
-    { id: 'crew', label: '👩‍🏫 Guru', icon: Users },
-    { id: 'meeting', label: '🎥 Rapat Online', icon: Video },
-    { id: 'update', label: '📢 Info', icon: MessageSquare },
-    { id: 'attendance', label: '✅ Absensi', icon: CheckCircle2 }
+    { id: 'profile', label: '👥 Profil & Pengurus', icon: Users },
+    { id: 'program', label: '🎯 Program & Agenda', icon: Calendar },
+    { id: 'update', label: '📢 Informasi', icon: MessageSquare },
+    { id: 'stories', label: '📸 Dokumentasi & Praktik', icon: Sparkles },
+    { id: 'drive', label: '📚 Sumber Belajar', icon: HardDrive },
+    { id: 'services', label: '🗂️ Layanan', icon: HelpCircle }
   ];
 
   return (
@@ -45,7 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 flex-wrap">
         {/* Logo Branding */}
         <button
           onClick={() => setActiveTab('home')}
@@ -70,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 bg-gray-100 p-1.5 rounded-2xl border-2 border-black shadow-[2px_2px_0_0_#000]">
+        <nav aria-label="Navigasi utama" className="hidden lg:flex order-last w-full flex-wrap items-center gap-1 bg-gray-100 p-1.5 rounded-2xl border-2 border-black shadow-[2px_2px_0_0_#000] mt-2">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (

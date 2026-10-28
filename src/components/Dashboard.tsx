@@ -3,6 +3,8 @@ import { HeroBanner } from './HeroBanner';
 import { ScheduleItem, DriveFolder, AnnouncementItem } from '../types';
 import { Calendar, HardDrive, DollarSign, Users, Sparkles, MapPin, Clock, ArrowRight, Video, FileText, CheckCircle2 } from 'lucide-react';
 import { formatRupiah } from '../utils/export';
+import { FeatureLinks } from '../features/portal/PortalHub';
+import { upcomingSchedule } from '../features/portal/model';
 
 interface DashboardProps {
   schedules: ScheduleItem[];
@@ -23,7 +25,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   setActiveTab,
   onOpenHelpModal
 }) => {
-  const nextSchedule = schedules.find((s) => s.status === 'Akan Datang' || s.status === 'Persiapan') || schedules[0];
+  const nextSchedule = upcomingSchedule(schedules);
   const totalFiles = driveFolders.reduce((acc, f) => acc + f.fileCount, 0);
 
   return (
@@ -35,6 +37,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         cashBalance={cashBalance}
         onOpenHelpModal={onOpenHelpModal}
       />
+
+      <FeatureLinks onNavigate={setActiveTab} />
 
       {/* Greeting & Quick Stat Cards */}
       <div>

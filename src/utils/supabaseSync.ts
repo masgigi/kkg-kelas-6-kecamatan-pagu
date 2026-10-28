@@ -83,7 +83,7 @@ function toDatabaseRow(table: string, item: any, index?: number): any {
     case COLLECTIONS.teachers:
       return { id: row.id, name: row.name, school: row.school, nip: row.nip, role: row.role, phone: row.phone, email: row.email, avatar_url: row.avatarUrl };
     case COLLECTIONS.announcements:
-      return { id: row.id, title: row.title, date: row.date, author: row.author, content: row.content, tags: row.tags ?? [], is_pinned: row.isPinned ?? false, image_url: row.imageUrl };
+      return { id: row.id, title: row.title, date: row.date, author: row.author, content: row.content, tags: row.tags ?? [], is_pinned: row.isPinned ?? false, image_url: row.imageUrl, expires_on: row.expiresOn || null, attachment_url: row.attachmentUrl || null };
     case COLLECTIONS.onlineMeeting:
       return { id: row.id || 'meet-1', title: row.title, scheduled_time: row.scheduledTime, meet_url: row.meetUrl, status: row.status, agenda_note: row.agendaNote, passcode: row.passcode };
     case COLLECTIONS.loginHistory:
@@ -101,7 +101,7 @@ function fromDatabaseRow(table: string, row: any): any {
     case COLLECTIONS.schedules: return { ...row, invitationUrl: row.invitation_url, mapsUrl: row.maps_url, googleMeetUrl: row.google_meet_url };
     case COLLECTIONS.transactions: return { ...row, schoolOrTeacher: row.school_or_teacher };
     case COLLECTIONS.teachers: return { ...row, avatarUrl: row.avatar_url };
-    case COLLECTIONS.announcements: return { ...row, isPinned: row.is_pinned, imageUrl: row.image_url };
+    case COLLECTIONS.announcements: return { ...row, isPinned: row.is_pinned, imageUrl: row.image_url, expiresOn: row.expires_on, attachmentUrl: row.attachment_url };
     case COLLECTIONS.onlineMeeting: return { ...row, scheduledTime: row.scheduled_time, meetUrl: row.meet_url, agendaNote: row.agenda_note };
     case COLLECTIONS.loginHistory: return { ...row, schoolName: row.school_name, teacherName: row.teacher_name };
     case COLLECTIONS.attendance: return { ...row, scheduleId: row.schedule_id, teacherId: row.teacher_id, teacherName: row.teacher_name, checkedInAt: row.checked_in_at };

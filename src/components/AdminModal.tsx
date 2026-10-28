@@ -1,307 +1,93 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
+import { Eye, EyeOff, LogOut, Download, Shield } from 'lucide-react';
 import { UserSession } from '../types';
-import { Shield, Key, Lock, CheckCircle2, AlertCircle, LogOut, RefreshCw, Download, Upload, History } from 'lucide-react';
-import { storage } from '../utils/storage';
 import { supabase, supabaseAdminEmail } from '../lib/supabase';
+import { storage } from '../utils/storage';
+import { PortalModal } from '../features/portal/PortalModal';
+import { featureLinks } from '../features/portal/PortalHub';
 
 interface AdminModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  userSession: UserSession;
+  isOpen: boolean; onClose: () => void; userSession: UserSession;
   setUserSession: (session: UserSession) => void;
+  onNavigate: (tab: string) => void;
   onOpenLoginHistory?: () => void;
   onRecordLoginHistory?: (entry: { role: 'teacher' | 'admin'; schoolName: string; teacherName: string }) => void;
 }
 
-export const AdminModal: React.FC<AdminModalProps> = ({
-  isOpen,
-  onClose,
-  userSession,
-  setUserSession,
-  onOpenLoginHistory,
-  onRecordLoginHistory
-}) => {
-  const [passwordInput, setPasswordInput] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [infoMsg, setInfoMsg] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+export function AdminModal({ isOpen, onClose, userSession, setUserSession, onNavigate, onOpenLoginHistory, onRecordLoginHistory }: AdminModalProps) {
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const close = () => { setPassword(''); setShowPassword(false); setError(''); setInfo(''); onClose(); };
+  const activate = async () => {
+    const { data, error } = await supabase.rpc('is_kkg_admin');
+    if (error || data !== true) {
+      await supabase.auth.signOut();
+      throw new Error('Akun ini belum memiliki akses pengurus KKG.');
+    }
+    setUserSession({ isLoggedIn: true, role: 'admin' });
+    setPassword(''); setShowPassword(false);
+    onRecordLoginHistory?.({ role: 'admin', schoolName: 'Korwil Pagu (Admin KKG)', teacherName: 'Pengurus KKG Pagu' });
+  };
+  const authenticate = async (create = false) => {
+    if (busy) return;
+    setError(''); setInfo('');
+    if (create && password.length < 8) { setError('Gunakan password minimal 8 karakter.'); return; }
+    setBusy(true);
+    try {
+      const credentials = { email: supabaseAdminEmail, password };
+      const { data, error } = create ? await supabase.auth.signUp(credentials) : await supabase.auth.signInWithPassword(credentials);
+      if (error) throw error;
+      if (data.session) await activate();
+      else { setPassword(''); setInfo('Periksa email admin untuk konfirmasi akun, lalu masuk kembali.'); }
+    } catch (e) {
+      const message = (e as Error).message;
+      setError(message === 'Invalid login credentials' ? 'Email atau password tidak cocok. Periksa kembali password admin.' : message);
+    } finally { setBusy(false); }
+  };
+  const logout = async () => {
+    setBusy(true); setError('');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUserSession({ isLoggedIn: false, role: 'guest' });
+      close(); onNavigate('home');
+    } catch { setError('Belum berhasil keluar. Periksa koneksi lalu coba lagi.'); }
+    finally { setBusy(false); }
+  };
   if (!isOpen) return null;
-
-  const activateAdminSession = () => {
-    setUserSession({
-      isLoggedIn: true,
-      role: 'admin'
-    });
-
-    if (onRecordLoginHistory) {
-      onRecordLoginHistory({
-        role: 'admin',
-        schoolName: 'Korwil Pagu (Admin KKG)',
-        teacherName: 'Pengurus Utama KKG Pagu'
-      });
-    }
-  };
-
-  const handleAdminAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setInfoMsg('');
-    setIsSubmitting(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: supabaseAdminEmail,
-        password: passwordInput
-      });
-      if (error) throw error;
-      if (data.user?.email?.toLowerCase() !== supabaseAdminEmail) {
-        await supabase.auth.signOut();
-        throw new Error('Akun ini tidak terdaftar sebagai admin KKG.');
-      }
-      activateAdminSession();
-      setPasswordInput('');
-      onClose();
-      window.setTimeout(() => window.location.reload(), 150);
-    } catch (error: any) {
-      setErrorMsg(
-        error?.message === 'Invalid login credentials'
-          ? 'Akun belum dibuat atau password salah. Untuk pemakaian pertama, tekan “Buat Akun Admin”.'
-          : error?.message || 'Login admin gagal.'
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCreateAdmin = async () => {
-    setErrorMsg('');
-    setInfoMsg('');
-    if (passwordInput.length < 8) {
-      setErrorMsg('Buat password minimal 8 karakter.');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: supabaseAdminEmail,
-        password: passwordInput
-      });
-      if (error) throw error;
-      if (data.session) {
-        activateAdminSession();
-        onClose();
-        window.setTimeout(() => window.location.reload(), 150);
-      } else {
-        setInfoMsg(`Akun dibuat. Buka email ${supabaseAdminEmail}, tekan tautan konfirmasi, lalu kembali untuk masuk.`);
-      }
-    } catch (error: any) {
-      setErrorMsg(error?.message || 'Pembuatan akun admin gagal.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUserSession({
-      isLoggedIn: false,
-      role: 'guest'
-    });
-    window.location.reload();
-  };
-
-  const handleBackup = () => {
-    storage.exportAllData();
-  };
-
-  const handleRestoreClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-        if (confirm('Apakah Anda yakin ingin me-restore data dari file backup ini? Data aplikasi akan diperbarui.')) {
-          storage.importAllData(json);
-        }
-      } catch (err) {
-        alert('Gagal membaca file backup! Pastikan format file adalah JSON backup kkg6up yang valid.');
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-[8px_8px_0_0_#000] max-w-md w-full space-y-4 text-gray-900">
-        <div className="flex items-center justify-between border-b-2 border-black pb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-purple-600 text-white border-2 border-black flex items-center justify-center font-black shadow-[1px_1px_0_0_#000]">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-black text-black">Mode Pengurus / Admin</h3>
-              <p className="text-[10px] font-bold text-gray-500">
-                Akses kelola data jadwal, kas, guru, & backup data
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-red-400 text-black border-2 border-black font-black text-sm shadow-[1px_1px_0_0_#000]"
-          >
-            ✕
-          </button>
-        </div>
-
-        {userSession.role === 'admin' ? (
-          <div className="space-y-4">
-            <div className="bg-purple-100 rounded-2xl border-2 border-black p-4 space-y-2">
-              <div className="flex items-center gap-2 text-purple-900 font-black text-xs">
-                <CheckCircle2 className="w-5 h-5 text-purple-700" />
-                <span>STATUS: ADMIN PENGURUS KKG AKTIF</span>
-              </div>
-              <p className="text-xs font-bold text-gray-700">
-                Bapak/Ibu Pengurus dapat mengelola data, mencetak laporan, serta melakukan backup & restore seluruh data aplikasi.
-              </p>
-            </div>
-
-            {/* Hidden File Input for Restore */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleRestoreFile}
-              accept=".json"
-              className="hidden"
-            />
-
-            {/* Backup & Restore Action Section */}
-            <div className="p-3 bg-yellow-50 rounded-2xl border-2 border-black space-y-2">
-              <p className="text-xs font-black text-black">📦 FITUR BACKUP & RESTORE DATA</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleBackup}
-                  className="py-2.5 px-3 bg-emerald-400 hover:bg-emerald-500 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center justify-center gap-1.5 transition-transform active:scale-95"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Backup Data</span>
-                </button>
-
-                <button
-                  onClick={handleRestoreClick}
-                  className="py-2.5 px-3 bg-cyan-400 hover:bg-cyan-500 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center justify-center gap-1.5 transition-transform active:scale-95"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Restore Data</span>
-                </button>
-              </div>
-              <p className="text-[10px] text-gray-600 font-bold">
-                💡 Backup mendownload file JSON data web. Restore memulihkan data dari file JSON backup.
-              </p>
-            </div>
-
-            <div className="pt-2 flex flex-col gap-2">
-              <button
-                onClick={async () => {
-                  if (confirm('Apakah Anda yakin ingin membangun ulang & mereset seluruh data di Firestore dan browser ke standar awal? Semua data akan disinkronkan kembali dengan struktur baru.')) {
-                    await storage.resetToDefault();
-                  }
-                }}
-                className="w-full py-2.5 bg-amber-300 hover:bg-amber-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center justify-center gap-2 active:scale-95 transition-transform"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>⚡ Atur Ulang & Bangun Data Firestore</span>
-              </button>
-
-              <button
-                onClick={handleLogout}
-                className="w-full py-2.5 bg-red-400 hover:bg-red-500 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center justify-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Keluar Mode Admin</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleAdminAuth} className="space-y-3">
-            <div>
-              <label className="block text-xs font-black text-black mb-1">
-                Email Admin
-              </label>
-              <div className="mb-3 rounded-xl border-2 border-black bg-gray-100 px-3 py-2.5 text-xs font-black">
-                {supabaseAdminEmail}
-              </div>
-              <label className="block text-xs font-black text-black mb-1">
-                Password Admin Supabase
-              </label>
-              <div className="relative">
-                <Key className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  required
-                  placeholder="Minimal 8 karakter"
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-black font-bold text-xs focus:outline-none focus:ring-2 focus:ring-purple-600"
-                />
-              </div>
-            </div>
-
-            {errorMsg && (
-              <div className="bg-red-100 border-2 border-black text-red-900 text-xs font-bold p-2.5 rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            {infoMsg && (
-              <div className="bg-emerald-100 border-2 border-black text-emerald-900 text-xs font-bold p-2.5 rounded-xl flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{infoMsg}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] transition-transform active:scale-95"
-            >
-              {isSubmitting ? 'MEMPROSES...' : 'MASUK MODE ADMIN →'}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleCreateAdmin}
-              disabled={isSubmitting}
-              className="w-full py-2.5 bg-cyan-300 hover:bg-cyan-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000]"
-            >
-              PEMAKAIAN PERTAMA: BUAT AKUN ADMIN
-            </button>
-          </form>
-        )}
-
-        {onOpenLoginHistory && (
-          <div className="pt-2 border-t-2 border-black flex justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onOpenLoginHistory();
-              }}
-              className="text-xs font-black text-purple-700 hover:underline flex items-center gap-1.5 py-1"
-            >
-              <History className="w-4 h-4" />
-              <span>Lihat Riwayat Login Guru & Admin →</span>
-            </button>
-          </div>
-        )}
-      </div>
+  const admin = userSession.isLoggedIn && userSession.role === 'admin';
+  const links = [...featureLinks,
+    { id: 'schedule', title: 'Jadwal Kegiatan', emoji: '📅', color: 'bg-pink-200', note: 'Waktu, lokasi, undangan, dan agenda' },
+    { id: 'crew', title: 'Data Guru', emoji: '👩‍🏫', color: 'bg-cyan-200', note: 'Tambah dan perbarui anggota' },
+    { id: 'cash', title: 'Kas KKG', emoji: '💸', color: 'bg-emerald-200', note: 'Pemasukan, pengeluaran, dan laporan' },
+    { id: 'meeting', title: 'Rapat Online', emoji: '🎥', color: 'bg-orange-200', note: 'Tautan rapat dan catatan pertemuan' },
+    { id: 'attendance', title: 'Rekap Absensi', emoji: '✅', color: 'bg-lime-200', note: 'Kehadiran peserta kegiatan' }
+  ];
+  return <PortalModal title={admin ? '🌈 Pusat Pengelolaan KKG' : '🔐 Masuk Pengurus KKG'} onClose={close} busy={busy}>
+    <div className="space-y-5">
+      {admin ? <>
+        <div className="bg-gradient-to-r from-purple-600 to-pink-500 text-white border-2 border-black rounded-2xl p-4"><p className="font-black flex gap-2 items-center"><Shield size={18} />Mode pengurus aktif</p><p className="text-xs mt-2 break-all">{supabaseAdminEmail}</p><p className="text-sm mt-2">Pilih bagian, lalu gunakan tombol Tambah atau Edit pada halaman tersebut.</p></div>
+        <button className="portal-button bg-yellow-300 w-full" onClick={() => { close(); onNavigate('services'); }}>📥 Tinjau kiriman guru & usulan</button>
+        <nav aria-label="Menu pengelolaan admin" className="grid sm:grid-cols-2 gap-3">{links.map(link => <button key={link.id} className={`${link.color} p-4 text-left rounded-2xl border-2 border-black shadow-[3px_3px_0_#000] hover:-translate-y-0.5 transition-transform`} onClick={() => { close(); onNavigate(link.id); }}><span className="font-black block">{link.emoji} {link.title}</span><span className="text-xs font-semibold block mt-1">{link.note}</span></button>)}</nav>
+        <details className="border-2 border-black rounded-xl p-4 bg-gray-50"><summary className="font-black cursor-pointer">Alat pengurus</summary><div className="space-y-3 mt-4">
+          {onOpenLoginHistory && <button className="portal-button bg-purple-200" onClick={() => { close(); onOpenLoginHistory(); }}>Lihat riwayat login</button>}
+          <button className="portal-button bg-emerald-200" onClick={() => storage.exportAllData()}><Download size={16} />Unduh salinan data lama</button>
+          <p className="text-xs font-semibold text-gray-600">Salinan ini berasal dari cache perangkat: jadwal, kas, guru, pengumuman, folder, rapat, dan akun sekolah. Belum mencakup konten baru, kiriman, absensi, riwayat login, atau berkas unggahan.</p>
+        </div></details>
+        <button disabled={busy} className="portal-button bg-pink-200 w-full" onClick={() => void logout()}><LogOut size={16} />{busy ? 'Memproses…' : 'Keluar dari Admin'}</button>
+      </> : <form onSubmit={e => { e.preventDefault(); void authenticate(); }} className="space-y-4">
+        <p className="text-sm font-semibold">Masuk untuk mengelola informasi, kegiatan, bahan ajar, dan kiriman guru.</p>
+        <label className="portal-label">Email admin<input className="portal-input bg-gray-100" autoComplete="username" value={supabaseAdminEmail} readOnly /></label>
+        <label className="portal-label">Password admin<input autoFocus required disabled={busy} type={showPassword ? 'text' : 'password'} autoComplete="current-password" className="portal-input" value={password} onChange={e => setPassword(e.target.value)} /></label>
+        <button type="button" className="flex gap-2 items-center text-xs font-bold" aria-pressed={showPassword} onClick={() => setShowPassword(v => !v)}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}{showPassword ? 'Sembunyikan password' : 'Tampilkan password'}</button>
+        <button type="submit" disabled={busy} className="portal-button bg-purple-600 text-white w-full">{busy ? 'Memproses…' : 'Masuk ke Pusat Pengelolaan'}</button>
+        <details className="border-2 border-black rounded-xl p-3 bg-cyan-50"><summary className="font-bold text-sm cursor-pointer">Pemakaian pertama</summary><p className="text-xs mt-3 mb-3">Jika akun pengurus belum dibuat, isi password minimal 8 karakter lalu buat akun. Konfirmasi dikirim ke email admin di atas.</p><button type="button" disabled={busy} onClick={() => void authenticate(true)} className="portal-button bg-cyan-300">Buat akun pengurus</button></details>
+      </form>}
+      {error && <p role="alert" className="portal-error">{error}</p>}
+      {info && <p role="status" className="bg-emerald-100 border-2 border-black rounded-xl p-3 text-sm font-bold">{info}</p>}
     </div>
-  );
-};
+  </PortalModal>;
+}

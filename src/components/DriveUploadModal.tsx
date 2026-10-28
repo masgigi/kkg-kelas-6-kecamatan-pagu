@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { uploadPortalFile } from '../features/portal/api';
+import { safeUrl } from '../features/portal/model';
 import { CategoryDrive } from '../types';
 import { UploadCloud, X, CheckCircle2, FileText, Link, Folder, Sparkles, Loader2 } from 'lucide-react';
 
@@ -12,7 +14,7 @@ interface DriveUploadModalProps {
     uploader: string;
     fileUrl?: string;
     fileName?: string;
-  }) => void;
+  }) => Promise<void>;
   categories: CategoryDrive[];
 }
 
@@ -48,7 +50,7 @@ export const DriveUploadModal: React.FC<DriveUploadModalProps> = ({
     e.preventDefault();
     const errors: Record<string, string> = {};
     if (!fileTitle.trim()) errors.fileTitle = 'Judul file wajib diisi.';
-    if (uploadMode === 'link' && !driveUrl.trim()) errors.driveUrl = 'Link Google Drive wajib diisi.';
+    if (uploadMode === 'link' && !safeUrl(driveUrl)) errors.driveUrl = 'Isi tautan http:// atau https:// yang valid.';
     if (uploadMode === 'device' && !selectedFile) errors.file = 'Pilih file dari HP/Laptop.';
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
     setFormErrors({});
@@ -56,21 +58,9 @@ export const DriveUploadModal: React.FC<DriveUploadModalProps> = ({
     const uploaderInfo = `${uploaderName.trim() || 'Guru Kelas 6'} (${schoolName.trim() || 'Kecamatan Pagu'})`;
     setIsUploading(true);
 
-    let fileUrl = uploadMode === 'link' ? driveUrl.trim() : '';
-
-    if (uploadMode === 'device' && selectedFile) {
-      const filePath = `kkg-files/${selectedCategory}/${Date.now()}-${selectedFile.name}`;
-      const { error: uploadError } = await supabase.storage.from('kkg-files').upload(filePath, selectedFile);
-      if (uploadError) {
-        setIsUploading(false);
-        alert(`Gagal mengunggah file: ${uploadError.message}`);
-        return;
-      }
-      const { data: urlData } = supabase.storage.from('kkg-files').getPublicUrl(filePath);
-      fileUrl = urlData.publicUrl;
-    }
-
-    onUploadSuccess({
+    try {
+    const fileUrl = uploadMode === 'device' && selectedFile ? await uploadPortalFile(selectedFile) : driveUrl.trim();
+    await onUploadSuccess({
       title: fileTitle,
       category: selectedCategory,
       uploader: uploaderInfo,
@@ -78,12 +68,12 @@ export const DriveUploadModal: React.FC<DriveUploadModalProps> = ({
       fileName: selectedFile ? selectedFile.name : fileTitle
     });
 
-    alert(`Berhasil! File "${fileTitle}" telah diunggah ke folder ${selectedCategory} SIXDRIVE KKG!`);
-    setIsUploading(false);
     setFileTitle('');
     setDriveUrl('');
     setSelectedFile(null);
     onClose();
+    } catch (error) { setFormErrors({ submit: (error as Error).message }); }
+    finally { setIsUploading(false); }
   };
 
   return (
@@ -115,6 +105,7 @@ export const DriveUploadModal: React.FC<DriveUploadModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+          {!!Object.keys(formErrors).length && <div role="alert" className="portal-error">{Object.values(formErrors).join(' ')}</div>}
           
           {/* Mode Selector */}
           <div className="flex rounded-2xl border-2 border-black p-1 bg-gray-100 shadow-[2px_2px_0_0_#000]">
@@ -250,10 +241,11 @@ export const DriveUploadModal: React.FC<DriveUploadModalProps> = ({
             </button>
             <button
               type="submit"
+              disabled={isUploading}
               className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] transition-transform active:scale-95 flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Kirim & Unggah ke SIXDRIVE</span>
+              <span>{isUploading ? 'Menyimpan…' : 'Simpan ke Katalog Sumber Belajar'}</span>
             </button>
           </div>
 
