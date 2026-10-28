@@ -20,6 +20,31 @@ body:has(dialog[open]) { overflow: hidden; }
 .joglo-glow { position: absolute; z-index: -1; width: 22rem; height: 22rem; border-radius: 50%; pointer-events: none; filter: blur(65px); opacity: .28; animation: joglo-drift 18s ease-in-out infinite alternate; }
 .joglo-glow-one { left: -9rem; bottom: -14rem; background: #31d8ff; }
 .joglo-glow-two { right: 10%; top: -14rem; background: #ffbf47; animation-delay: -9s; }
+.joglo-action {
+  position: relative; isolation: isolate; cursor: pointer;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition: transform 240ms cubic-bezier(.2, .8, .2, 1), box-shadow 240ms ease, filter 240ms ease;
+}
+.joglo-action::before {
+  content: ''; position: absolute; inset: -8px; z-index: -1;
+  border-radius: inherit; border: 2px solid var(--joglo-aura, #ffe45e);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--joglo-aura, #ffe45e) 22%, transparent), 0 0 24px 5px color-mix(in srgb, var(--joglo-aura, #ffe45e) 55%, transparent);
+  opacity: 0; transform: scale(.88); pointer-events: none;
+  transition: opacity 240ms ease, transform 280ms cubic-bezier(.2, .8, .2, 1);
+}
+.joglo-action:nth-child(1) { --joglo-aura: #ffe45e; }
+.joglo-action:nth-child(2) { --joglo-aura: #39dffa; }
+.joglo-action:nth-child(3) { --joglo-aura: #ff62ba; }
+.joglo-action:nth-child(4) { --joglo-aura: #54e6b3; }
+.joglo-action:nth-child(5) { --joglo-aura: #ffffff; }
+.joglo-action:nth-child(6) { --joglo-aura: #ffc47a; }
+@media (hover: hover) and (pointer: fine) {
+  .joglo-action:hover { transform: translate3d(0, -7px, 0) scale(1.045); box-shadow: 6px 11px 0 #000, 0 16px 30px rgba(0, 0, 0, .32); filter: brightness(1.04); }
+  .joglo-action:hover::before { opacity: 1; transform: scale(1); }
+}
+.joglo-action:focus-visible { transform: translate3d(0, -5px, 0) scale(1.035); outline: 3px solid #fff; outline-offset: 9px; }
+.joglo-action:focus-visible::before { opacity: 1; transform: scale(1); }
+.joglo-action:active { transform: translate3d(0, 1px, 0) scale(.96); box-shadow: 2px 2px 0 #000; }
 @keyframes joglo-breathe { from { transform: scale(1.015) translate3d(-.3%, 0, 0); } to { transform: scale(1.08) translate3d(1%, -.6%, 0); } }
 @keyframes joglo-drift { from { transform: translate3d(0, 0, 0); opacity: .16; } to { transform: translate3d(3rem, 2rem, 0); opacity: .35; } }
 .kkg-feature-card { position: relative; isolation: isolate; overflow: hidden; }

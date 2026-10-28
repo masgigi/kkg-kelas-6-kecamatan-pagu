@@ -42,7 +42,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <button
             onClick={() => setActiveTab('schedule')}
-            className="px-5 py-3 rounded-2xl bg-yellow-300 hover:bg-yellow-400 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
+            className="joglo-action px-5 py-3 rounded-2xl bg-yellow-300 hover:bg-yellow-400 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
           >
             <Calendar className="w-4 h-4 stroke-[3]" />
             <span>Lihat Agenda</span>
@@ -50,7 +50,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
 
           <button
             onClick={() => setActiveTab('drive')}
-            className="px-5 py-3 rounded-2xl bg-cyan-300 hover:bg-cyan-400 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
+            className="joglo-action px-5 py-3 rounded-2xl bg-cyan-300 hover:bg-cyan-400 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
           >
             <HardDrive className="w-4 h-4 stroke-[3]" />
             <span>Cari Bahan Ajar</span>
@@ -58,7 +58,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
 
           <button
             onClick={() => setActiveTab('meeting')}
-            className="px-4 py-3 rounded-2xl bg-pink-400 hover:bg-pink-500 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
+            className="joglo-action px-4 py-3 rounded-2xl bg-pink-400 hover:bg-pink-500 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
           >
             <Video className="w-4 h-4 stroke-[3]" />
             <span>🎥 Rapat Online</span>
@@ -68,7 +68,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
             href="https://chat.whatsapp.com/H8awmBQpl361F1XfcsE6hG?s=cl&p=a&mlu=0&amv=0"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-3 rounded-2xl bg-emerald-300 hover:bg-emerald-400 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
+            className="joglo-action px-4 py-3 rounded-2xl bg-emerald-300 hover:bg-emerald-400 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
           >
             <span>💬 Grup WA</span>
           </a>
@@ -77,7 +77,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
             href="https://drive.google.com/drive/folders/1baa5tRmJiob88KcN_igCr0WNNry00j2i?usp=sharing"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-3 rounded-2xl bg-white hover:bg-gray-100 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
+            className="joglo-action px-4 py-3 rounded-2xl bg-white hover:bg-gray-100 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
           >
             <span>📂 Induk Drive</span>
           </a>
@@ -85,7 +85,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
           {onOpenHelpModal && (
             <button
               onClick={onOpenHelpModal}
-              className="px-4 py-3 rounded-2xl bg-orange-300 hover:bg-orange-400 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
+              className="joglo-action px-4 py-3 rounded-2xl bg-orange-300 hover:bg-orange-400 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
             >
               <HelpCircle className="w-4 h-4 stroke-[3]" />
               <span>📖 Panduan</span>
