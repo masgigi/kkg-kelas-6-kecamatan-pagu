@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import { LoginHistoryItem } from '../types';
-import { History, X, Shield, User, Trash2, Search, Download, Clock, School } from 'lucide-react';
+import { History, X, Shield, User, Search, Download, Clock, School } from 'lucide-react';
 
 interface LoginHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   loginHistory: LoginHistoryItem[];
-  onClearHistory?: () => void;
-  isAdmin?: boolean;
+  isLoading: boolean;
+  error: string;
 }
 
 export const LoginHistoryModal: React.FC<LoginHistoryModalProps> = ({
   isOpen,
   onClose,
   loginHistory,
-  onClearHistory,
-  isAdmin = false
+  isLoading,
+  error
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -29,32 +29,30 @@ export const LoginHistoryModal: React.FC<LoginHistoryModalProps> = ({
   );
 
   const handleExportCSV = () => {
-    if (loginHistory.length === 0) {
-      alert('Tidak ada riwayat login untuk diunduh.');
-      return;
-    }
+    if (loginHistory.length === 0 || isLoading) return;
 
     const headers = ['ID', 'Peran', 'Sekolah', 'Nama Guru', 'Waktu Login', 'Status'];
     const rows = loginHistory.map((l) => [
       l.id,
       l.role === 'admin' ? 'Pengurus Admin' : 'Guru Kelas 6',
-      `"${l.schoolName}"`,
-      `"${l.teacherName}"`,
-      `"${l.timestamp}"`,
+      l.schoolName,
+      l.teacherName,
+      l.timestamp,
       l.status
     ]);
-
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
+    const escapeCell = (value: string) => {
+      const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map(escapeCell).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', url);
     link.setAttribute('download', `Riwayat_Login_KKG_Pagu_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   return (
@@ -78,6 +76,7 @@ export const LoginHistoryModal: React.FC<LoginHistoryModalProps> = ({
           </div>
           <button
             onClick={onClose}
+            aria-label="Tutup riwayat login"
             className="p-1.5 bg-white hover:bg-gray-100 text-black rounded-xl border-2 border-black font-black shadow-[2px_2px_0_0_#000]"
           >
             <X className="w-5 h-5" />
@@ -90,6 +89,7 @@ export const LoginHistoryModal: React.FC<LoginHistoryModalProps> = ({
             <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              aria-label="Cari riwayat login"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari nama guru / sekolah..."
@@ -100,36 +100,27 @@ export const LoginHistoryModal: React.FC<LoginHistoryModalProps> = ({
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={handleExportCSV}
-              className="px-3 py-2 bg-yellow-300 hover:bg-yellow-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center gap-1.5 transition-transform active:scale-95"
+              disabled={isLoading || loginHistory.length === 0}
+              className="px-3 py-2 bg-yellow-300 hover:bg-yellow-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center gap-1.5 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
               <span>Unduh CSV</span>
             </button>
 
-            {isAdmin && onClearHistory && (
-              <button
-                onClick={() => {
-                  if (confirm('Apakah Anda yakin ingin menghapus seluruh riwayat login?')) {
-                    onClearHistory();
-                  }
-                }}
-                className="px-3 py-2 bg-red-400 hover:bg-red-500 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center gap-1.5 transition-transform active:scale-95"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Bersihkan</span>
-              </button>
-            )}
           </div>
         </div>
 
         {/* History List */}
         <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3">
-          {filteredLogs.length === 0 ? (
+          {error && <p role="alert" className="border-2 border-black rounded-xl bg-red-100 p-3 text-sm font-bold">{error}</p>}
+          {isLoading ? (
+            <p role="status" className="py-10 text-center font-bold">Memuat riwayat login dari server…</p>
+          ) : filteredLogs.length === 0 ? (
             <div className="text-center py-10 bg-purple-50 rounded-2xl border-2 border-dashed border-black">
               <History className="w-10 h-10 text-purple-400 mx-auto mb-2" />
-              <p className="font-black text-sm text-black">Belum Ada Riwayat Login</p>
+              <p className="font-black text-sm text-black">{searchTerm ? 'Tidak ada hasil pencarian' : 'Belum ada riwayat login'}</p>
               <p className="text-xs font-bold text-gray-500 mt-0.5">
-                Aktivitas login guru/pengurus akan muncul secara otomatis di sini.
+                {error ? 'Coba buka kembali setelah koneksi pulih.' : searchTerm ? 'Coba kata kunci lain.' : 'Catatan login guru dan pengurus akan tampil di sini.'}
               </p>
             </div>
           ) : (
@@ -186,7 +177,7 @@ export const LoginHistoryModal: React.FC<LoginHistoryModalProps> = ({
 
         {/* Footer info */}
         <div className="bg-purple-100 border-t-2 border-black p-3 text-center text-[11px] font-extrabold text-purple-900">
-          💡 Riwayat login tersimpan secara aman & realtime di sistem KKG SIXVIBE Pagu.
+          Riwayat login dimuat dari server untuk pengurus yang memiliki akses.
         </div>
 
       </div>

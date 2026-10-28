@@ -5,7 +5,7 @@ import { HardDrive, X, CheckCircle2, Link, FolderPlus, FileText } from 'lucide-r
 interface DriveModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (folderData: DriveFolder) => void;
+  onSave: (folderData: DriveFolder) => Promise<void>;
   initialFolder?: DriveFolder | null;
 }
 
@@ -18,7 +18,9 @@ export const DriveModal: React.FC<DriveModalProps> = ({
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [description, setDescription] = useState('');
-  const [fileCount, setFileCount] = useState<number>(10);
+  const [fileCount, setFileCount] = useState<number>(0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (initialFolder) {
@@ -30,14 +32,15 @@ export const DriveModal: React.FC<DriveModalProps> = ({
       setTitle('');
       setUrl('');
       setDescription('');
-      setFileCount(10);
+      setFileCount(0);
     }
   }, [initialFolder, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     if (!title.trim()) {
       alert('Mohon isi Nama/Kategori Folder.');
       return;
@@ -48,7 +51,7 @@ export const DriveModal: React.FC<DriveModalProps> = ({
     }
 
     const folderData: DriveFolder = {
-      id: initialFolder ? initialFolder.id : 'df-' + Date.now(),
+      id: initialFolder ? initialFolder.id : `df-${crypto.randomUUID()}`,
       title: title.trim() as any,
       url: url.trim(),
       description: description.trim() || 'Folder dokumen pembelajaran KKG SIXDRIVE',
@@ -57,8 +60,10 @@ export const DriveModal: React.FC<DriveModalProps> = ({
       iconName: initialFolder?.iconName || 'BookOpen'
     };
 
-    onSave(folderData);
-    onClose();
+    setSaving(true); setError('');
+    try { await onSave(folderData); onClose(); }
+    catch (reason) { setError((reason as Error).message); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -81,7 +86,7 @@ export const DriveModal: React.FC<DriveModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={onClose} disabled={saving}
             className="p-1.5 bg-white hover:bg-gray-100 text-black rounded-xl border-2 border-black font-black shadow-[2px_2px_0_0_#000]"
           >
             <X className="w-5 h-5" />
@@ -90,6 +95,7 @@ export const DriveModal: React.FC<DriveModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && <p role="alert" className="portal-error">{error}</p>}
           
           {/* Title / Kategori */}
           <div>
@@ -165,17 +171,17 @@ export const DriveModal: React.FC<DriveModalProps> = ({
           <div className="pt-3 border-t-2 border-black flex justify-end gap-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={onClose} disabled={saving}
               className="px-4 py-2 bg-gray-200 text-black font-black text-xs rounded-xl border-2 border-black"
             >
               Batal
             </button>
             <button
-              type="submit"
+              type="submit" disabled={saving}
               className="px-6 py-2 bg-amber-400 hover:bg-amber-500 text-black font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] transition-transform active:scale-95 flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Simpan Link Drive</span>
+              <span>{saving ? 'Menyimpan…' : 'Simpan Link Drive'}</span>
             </button>
           </div>
 

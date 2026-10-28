@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { TransactionItem } from '../types';
 import { calculateCashSummary, formatRupiah, exportTransactionsToCSV, printMonthlyReport } from '../utils/export';
 import { DollarSign, ArrowUpRight, ArrowDownRight, FileSpreadsheet, Printer, Plus, Search, Filter, Trash2, Calendar, Edit3 } from 'lucide-react';
+import { todayJakarta } from '../features/portal/model';
 
 interface CashViewProps {
   transactions: TransactionItem[];
   isAdmin: boolean;
-  onAddTransaction: (tx: Omit<TransactionItem, 'id'>) => void;
-  onEditTransaction?: (tx: TransactionItem) => void;
-  onDeleteTransaction?: (id: string) => void;
+  onAddTransaction: (tx: Omit<TransactionItem, 'id'>) => Promise<void>;
+  onEditTransaction?: (tx: TransactionItem) => Promise<void>;
+  onDeleteTransaction?: (id: string) => Promise<void>;
 }
 
 export const CashView: React.FC<CashViewProps> = ({
@@ -23,6 +24,8 @@ export const CashView: React.FC<CashViewProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>(''); // Default show all months
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<TransactionItem | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   // Form state
   const [txDesc, setTxDesc] = useState('');
@@ -30,20 +33,22 @@ export const CashView: React.FC<CashViewProps> = ({
   const [txAmount, setTxAmount] = useState('');
   const [txCategory, setTxCategory] = useState<TransactionItem['category']>('Kas Anggota');
   const [txSchool, setTxSchool] = useState('');
-  const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
+  const [txDate, setTxDate] = useState(todayJakarta());
 
   const handleOpenAdd = () => {
+    setError('');
     setEditingTx(null);
     setTxDesc('');
     setTxType('masuk');
     setTxAmount('');
     setTxCategory('Kas Anggota');
     setTxSchool('Anggota KKG Pagu');
-    setTxDate(new Date().toISOString().split('T')[0]);
+    setTxDate(todayJakarta());
     setIsAddModalOpen(true);
   };
 
   const handleOpenEdit = (tx: TransactionItem) => {
+    setError('');
     setEditingTx(tx);
     setTxDesc(tx.description);
     setTxType(tx.type);
@@ -66,17 +71,23 @@ export const CashView: React.FC<CashViewProps> = ({
     const matchesMonth = !selectedMonth || tx.date.startsWith(selectedMonth);
 
     return matchesSearch && matchesCategory && matchesMonth;
-  });
+  }).sort((a, b) => b.date.localeCompare(a.date));
+  const periodLabel = selectedMonth
+    ? new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(`${selectedMonth}-01T12:00:00`))
+    : 'Semua Periode';
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     if (!txDesc || !txAmount || Number(txAmount) <= 0) {
       alert('Mohon isi keterangan dan nominal transaksi dengan benar.');
       return;
     }
 
+    setSaving(true); setError('');
+    try {
     if (editingTx && onEditTransaction) {
-      onEditTransaction({
+      await onEditTransaction({
         ...editingTx,
         date: txDate,
         description: txDesc,
@@ -86,7 +97,7 @@ export const CashView: React.FC<CashViewProps> = ({
         schoolOrTeacher: txSchool || 'Anggota KKG Pagu'
       });
     } else {
-      onAddTransaction({
+      await onAddTransaction({
         date: txDate,
         description: txDesc,
         type: txType,
@@ -100,6 +111,8 @@ export const CashView: React.FC<CashViewProps> = ({
     setTxDesc('');
     setTxAmount('');
     setIsAddModalOpen(false);
+    } catch (saveError) { setError((saveError as Error).message); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -123,19 +136,19 @@ export const CashView: React.FC<CashViewProps> = ({
           {/* Action Export Buttons */}
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => printMonthlyReport(filteredTransactions, 'Juli / Agustus 2026')}
+              onClick={() => printMonthlyReport(filteredTransactions, periodLabel)}
               className="px-3.5 py-2.5 bg-white hover:bg-gray-100 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center gap-1.5 transition-transform active:scale-95"
             >
               <Printer className="w-4 h-4 text-purple-600" />
-              <span>Cetak Laporan PDF</span>
+              <span>Cetak / Simpan PDF</span>
             </button>
 
             <button
-              onClick={() => exportTransactionsToCSV(filteredTransactions, 'Juli_Agustus_2026')}
+              onClick={() => exportTransactionsToCSV(filteredTransactions, periodLabel)}
               className="px-3.5 py-2.5 bg-yellow-300 hover:bg-yellow-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center gap-1.5 transition-transform active:scale-95"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              <span>Download Excel</span>
+              <span>Unduh CSV</span>
             </button>
 
             {isAdmin && (
@@ -283,11 +296,7 @@ export const CashView: React.FC<CashViewProps> = ({
                         )}
                         {onDeleteTransaction && (
                           <button
-                            onClick={() => {
-                              if (confirm(`Yakin ingin menghapus transaksi "${tx.description}"?`)) {
-                                onDeleteTransaction(tx.id);
-                              }
-                            }}
+                            onClick={() => void onDeleteTransaction(tx.id).catch(deleteError => setError((deleteError as Error).message))}
                             className="p-1.5 bg-red-400 text-black rounded-lg border border-black hover:bg-red-500 shadow-[1px_1px_0_0_#000]"
                             title="Hapus Record"
                           >
@@ -305,6 +314,7 @@ export const CashView: React.FC<CashViewProps> = ({
       </div>
 
       {/* Add / Edit Transaction Modal */}
+      {error && !isAddModalOpen && <p role="alert" className="portal-error">{error}</p>}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-[8px_8px_0_0_#000] max-w-md w-full space-y-4">
@@ -313,7 +323,8 @@ export const CashView: React.FC<CashViewProps> = ({
                 {editingTx ? '✏️ Edit Transaksi Kas' : '➕ Catat Transaksi Baru'}
               </h3>
               <button
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={() => !saving && setIsAddModalOpen(false)}
+                disabled={saving}
                 className="w-8 h-8 rounded-xl bg-red-400 text-black border-2 border-black font-black text-sm shadow-[1px_1px_0_0_#000]"
               >
                 ✕
@@ -321,6 +332,7 @@ export const CashView: React.FC<CashViewProps> = ({
             </div>
 
             <form onSubmit={handleAddSubmit} className="space-y-3">
+              {error && <p role="alert" className="portal-error">{error}</p>}
               <div>
                 <label className="block text-xs font-black text-black mb-1">Jenis Transaksi</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -397,9 +409,10 @@ export const CashView: React.FC<CashViewProps> = ({
               <div className="pt-2 flex gap-2">
                 <button
                   type="submit"
+                  disabled={saving}
                   className="flex-1 py-3 bg-purple-600 text-white font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000]"
                 >
-                  Simpan Transaksi
+                  {saving ? 'Menyimpan…' : 'Simpan Transaksi'}
                 </button>
               </div>
             </form>

@@ -88,7 +88,7 @@ export const DriveUploadModal: React.FC<DriveUploadModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-black text-black leading-tight">
-                📤 Unggah File ke SIXDRIVE
+                📤 Tambah Bahan ke Katalog
               </h2>
               <p className="text-xs font-bold text-black/80">
                 Bagikan modul, ATP, asesmen, atau media pembelajaran guru
@@ -136,7 +136,7 @@ export const DriveUploadModal: React.FC<DriveUploadModalProps> = ({
           {/* Target Folder Category */}
           <div>
             <label className="block text-xs font-black text-black mb-1">
-              Pilih Kategori Folder Target <span className="text-red-500">*</span>
+              Kategori Bahan Ajar <span className="text-red-500">*</span>
             </label>
             <select
               value={selectedCategory}

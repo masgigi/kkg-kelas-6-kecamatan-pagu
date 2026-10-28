@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, Sparkles, X, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bell, X } from 'lucide-react';
 import { ScheduleItem } from '../types';
 
 interface NotificationBannerProps {
@@ -21,7 +21,7 @@ export const NotificationBanner: React.FC<NotificationBannerProps> = ({
         <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping shrink-0" />
         <Bell className="w-4 h-4 fill-black shrink-0" />
         <p className="line-clamp-1">
-          <strong>PENGINGAT MEETING KKG:</strong> {nextSchedule.title} ({nextSchedule.date} • {nextSchedule.location})
+          <strong>AGENDA KKG TERDEKAT:</strong> {nextSchedule.title} ({nextSchedule.date} • {nextSchedule.location})
         </p>
       </div>
 
@@ -34,6 +34,8 @@ export const NotificationBanner: React.FC<NotificationBannerProps> = ({
         </button>
         <button
           onClick={() => setIsVisible(false)}
+          type="button"
+          aria-label="Tutup info agenda terdekat"
           className="p-1 hover:bg-black/10 rounded-lg text-black"
         >
           <X className="w-4 h-4" />

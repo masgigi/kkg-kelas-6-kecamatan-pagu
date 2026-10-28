@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ScheduleItem } from '../types';
 import { Calendar, MapPin, Clock, X, Link as LinkIcon, Plus, CheckCircle2 } from 'lucide-react';
+import { todayJakarta } from '../features/portal/model';
 
 interface ScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (schedule: Omit<ScheduleItem, 'id'> | ScheduleItem) => void;
+  onSave: (schedule: Omit<ScheduleItem, 'id'> | ScheduleItem) => Promise<void>;
   initialSchedule?: ScheduleItem | null;
 }
 
@@ -23,6 +24,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [status, setStatus] = useState<ScheduleItem['status']>('Akan Datang');
   const [agendaInput, setAgendaInput] = useState('');
   const [googleMeetUrl, setGoogleMeetUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (initialSchedule) {
@@ -37,20 +40,21 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     } else {
       // Reset form for new schedule
       setTitle('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(todayJakarta());
       setTime('09.00 - 12.00 WIB');
-      setLocation('SDN Pagu 1');
-      setMapsUrl('https://maps.google.com/?q=SDN+Pagu+1+Kediri');
+      setLocation('');
+      setMapsUrl('');
       setStatus('Akan Datang');
-      setAgendaInput('Evaluasi Administrasi Kurikulum Merdeka\nSharing Perangkat Ajar & Modul\nPembahasan Kas KKG');
+      setAgendaInput('');
       setGoogleMeetUrl('');
     }
   }, [initialSchedule, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     if (!title || !date || !location) {
       alert('Mohon isi Judul, Tanggal, dan Lokasi kegiatan.');
       return;
@@ -68,13 +72,15 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       time,
       location,
       mapsUrl: mapsUrl.trim() ? mapsUrl.trim() : `https://maps.google.com/?q=${encodeURIComponent(location)}`,
-      agenda: agendaArr.length > 0 ? agendaArr : ['Kegiatan KKG Pagu'],
+      agenda: agendaArr,
       status,
       googleMeetUrl: googleMeetUrl.trim() || undefined
     };
 
-    onSave(scheduleData as any);
-    onClose();
+    setSaving(true); setError('');
+    try { await onSave(scheduleData as Omit<ScheduleItem, 'id'> | ScheduleItem); onClose(); }
+    catch (reason) { setError((reason as Error).message); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -97,7 +103,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={onClose} disabled={saving}
             className="p-1.5 bg-white hover:bg-gray-100 text-black rounded-xl border-2 border-black font-black shadow-[2px_2px_0_0_#000]"
           >
             <X className="w-5 h-5" />
@@ -106,6 +112,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+          {error && <p role="alert" className="portal-error">{error}</p>}
           
           {/* Judul Kegiatan */}
           <div>
@@ -242,17 +249,17 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           <div className="pt-3 border-t-2 border-black flex justify-end gap-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={onClose} disabled={saving}
               className="px-4 py-2 bg-gray-200 text-black font-black text-xs rounded-xl border-2 border-black"
             >
               Batal
             </button>
             <button
-              type="submit"
+              type="submit" disabled={saving}
               className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] transition-transform active:scale-95 flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Simpan Jadwal KKG</span>
+              <span>{saving ? 'Menyimpan…' : 'Simpan Jadwal KKG'}</span>
             </button>
           </div>
 

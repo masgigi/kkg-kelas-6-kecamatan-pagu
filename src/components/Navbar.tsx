@@ -91,7 +91,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Right Action Controls: Login & Admin */}
         <div className="flex items-center gap-2">
           {/* Riwayat Login Button */}
-          {onOpenLoginHistory && (
+          {userSession.role === 'admin' && onOpenLoginHistory && (
             <button
               onClick={onOpenLoginHistory}
               title="Riwayat Login"
@@ -115,12 +115,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Notification Button */}
           <button
             onClick={() => setActiveTab('schedule')}
-            title="Notifikasi Pertemuan"
+            title="Jadwal pertemuan mendatang"
+            aria-label={`Jadwal pertemuan mendatang: ${unreadCount}`}
             className="relative p-2 bg-yellow-300 hover:bg-yellow-400 text-black rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] font-black transition-transform active:scale-95"
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white font-black text-[10px] w-5 h-5 rounded-full border border-black flex items-center justify-center animate-bounce">
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white font-black text-[10px] w-5 h-5 rounded-full border border-black flex items-center justify-center">
                 {unreadCount}
               </span>
             )}

@@ -38,7 +38,7 @@ export function PortalHub({ view, items, isAdmin, loading, error, refresh, teach
   const [storyTab, setStoryTab] = useState<'documentation' | 'practice'>('documentation');
   const [contribution, setContribution] = useState<Submission['kind'] | null>(null);
   const link = featureLinks.find(f => f.id === (view === 'resources' ? 'drive' : view))!;
-  const section = (kind: Parameters<typeof ContentSection>[0]['kind']) => <ContentSection key={kind} kind={kind} items={items} isAdmin={isAdmin} refresh={refresh} />;
+  const section = (kind: Parameters<typeof ContentSection>[0]['kind'], emptyText?: string) => <ContentSection key={kind} kind={kind} items={items} isAdmin={isAdmin} refresh={refresh} emptyText={emptyText} />;
   return <div className="space-y-7 pb-10">
     <section className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 rounded-3xl border-4 border-black shadow-[6px_6px_0_#000] p-5 sm:p-7">
       <span className="inline-flex bg-yellow-300 border-2 border-black rounded-full px-3 py-1 text-xs font-black mb-3">⚡ SIXVIBE • KKG6UP!</span>
@@ -54,7 +54,9 @@ export function PortalHub({ view, items, isAdmin, loading, error, refresh, teach
     {error && <div role="alert" className="portal-error">{error}<button onClick={() => void refresh()} className="portal-button bg-white ml-3">Coba lagi</button></div>}
     {loading ? <p role="status" className="p-6 font-bold">Memuat konten KKG…</p> : <>
       {view === 'profile' && <>{section('profile')}<div className="grid grid-cols-2 gap-4"><div className="bg-yellow-200 border-3 border-black rounded-2xl p-5"><p className="text-3xl font-black">{teachers.length}</p><p className="font-bold text-sm">Guru anggota</p></div><div className="bg-pink-200 border-3 border-black rounded-2xl p-5"><p className="text-3xl font-black">{new Set(teachers.map(t => t.school.trim().toUpperCase())).size}</p><p className="font-bold text-sm">Sekolah terdaftar</p></div></div>{section('committee')}</>}
-      {view === 'program' && section('program')}
+      {view === 'program' && section('program', isAdmin
+        ? 'Tambahkan program resmi beserta periode, target, penanggung jawab, dan status pelaksanaan.'
+        : 'Program kerja resmi akan ditampilkan setelah diterbitkan pengurus. Agenda pertemuan dapat dilihat melalui tombol di atas.')}
       {view === 'stories' && <><div className="flex flex-wrap gap-3" aria-label="Kategori cerita"><button aria-pressed={storyTab === 'documentation'} className={`portal-button ${storyTab === 'documentation' ? 'bg-orange-300' : 'bg-white'}`} onClick={() => setStoryTab('documentation')}>📸 Dokumentasi kegiatan</button><button aria-pressed={storyTab === 'practice'} className={`portal-button ${storyTab === 'practice' ? 'bg-lime-300' : 'bg-white'}`} onClick={() => setStoryTab('practice')}>💡 Praktik baik guru</button></div>{section(storyTab)}</>}
       {view === 'resources' && section('resource')}
       {view === 'services' && <><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[{ id: 'cash', label: '💸 Kas KKG', color: 'bg-emerald-300' }, { id: 'meeting', label: '🎥 Rapat Online', color: 'bg-orange-300' }, { id: 'crew', label: '👩‍🏫 Data Guru', color: 'bg-cyan-300' }, { id: 'schedule', label: '📅 Agenda', color: 'bg-pink-300' }].map(item => <button key={item.id} className={`portal-button ${item.color}`} onClick={() => navigate(item.id)}>{item.label}</button>)}</div>{section('service')}{isAdmin && <ContributionReview onReviewed={refresh} />}</>}

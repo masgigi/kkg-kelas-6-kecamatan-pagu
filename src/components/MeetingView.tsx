@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { OnlineMeeting } from '../types';
 import { supabase } from '../lib/supabase';
-import { Video, Bell, ExternalLink, Copy, Check, Clock, Edit3, ShieldAlert, Sparkles, MessageSquare, Loader2 } from 'lucide-react';
+import { Video, ExternalLink, Copy, Check, Clock, Edit3, Loader2 } from 'lucide-react';
+import { safeUrl } from '../features/portal/model';
 
 interface MeetingViewProps {
   meeting: OnlineMeeting;
   isAdmin: boolean;
-  onUpdateMeeting?: (data: OnlineMeeting) => void;
+  onUpdateMeeting?: (data: OnlineMeeting) => Promise<void>;
   notifEnabled: boolean;
 }
 
@@ -17,24 +18,30 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
   notifEnabled
 }) => {
   const [copied, setCopied] = useState(false);
-  const [notes, setNotes] = useState(
-    localStorage.getItem('kkg6up_meeting_notes') ||
-      '• Catatan Rapat Online KKG Pagu:\n1. Kesepakatan kisi-kisi STS Semester 1.\n2. Jadwal piket pembuatan modul ajar.'
-  );
+  const [notes, setNotes] = useState('');
+  const [savedNotes, setSavedNotes] = useState('');
+  const [notesError, setNotesError] = useState('');
+  const [meetingError, setMeetingError] = useState('');
+  const [meetingSaving, setMeetingSaving] = useState(false);
+  const isConfigured = !!safeUrl(meeting.meetUrl) && meeting.meetUrl !== 'https://meet.google.com/kkg-pagu-kelas6';
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
 
   useEffect(() => {
-    supabase.from('online_meetings').select('meeting_notes').eq('id', meeting.id || 'meet-1').maybeSingle().then(({ data }) => {
-      if (data?.meeting_notes) setNotes(data.meeting_notes);
+    let active = true;
+    supabase.from('online_meetings').select('meeting_notes').eq('id', meeting.id || 'meet-1').maybeSingle().then(({ data, error }) => {
+      if (!active) return;
+      if (error) setNotesError('Catatan belum berhasil dimuat. Coba buka kembali halaman ini.');
+      else { setNotes(data?.meeting_notes || ''); setSavedNotes(data?.meeting_notes || ''); setNotesError(''); }
     });
+    return () => { active = false; };
   }, [meeting.id]);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(meeting.title);
-  const [editTime, setEditTime] = useState(meeting.scheduledTime);
-  const [editUrl, setEditUrl] = useState(meeting.meetUrl);
-  const [editAgendaNote, setEditAgendaNote] = useState(meeting.agendaNote);
+  const [editTitle, setEditTitle] = useState(isConfigured ? meeting.title : '');
+  const [editTime, setEditTime] = useState(isConfigured ? meeting.scheduledTime : '');
+  const [editUrl, setEditUrl] = useState(isConfigured ? meeting.meetUrl : '');
+  const [editAgendaNote, setEditAgendaNote] = useState(isConfigured ? meeting.agendaNote : '');
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(meeting.meetUrl);
@@ -45,33 +52,36 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setNotes(val);
-    localStorage.setItem('kkg6up_meeting_notes', val);
     setNotesSaved(false);
   };
 
   const handleNotesBlur = async () => {
+    if (!isAdmin || notesSaving) return;
     setNotesSaving(true);
-    const { error } = await supabase.from('online_meetings').update({ meeting_notes: notes }).eq('id', meeting.id || 'meet-1');
+    setNotesError(''); setNotesSaved(false);
+    const { data, error } = await supabase.from('online_meetings').update({ meeting_notes: notes }).eq('id', meeting.id || 'meet-1').select('id').maybeSingle();
     setNotesSaving(false);
-    if (error) {
-      console.error('Gagal menyimpan catatan rapat:', error);
-      return;
-    }
+    if (error || !data) { setNotesError(`Catatan belum tersimpan: ${error?.message || 'Data rapat tidak ditemukan.'}`); return; }
+    setSavedNotes(notes);
     setNotesSaved(true);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (onUpdateMeeting) {
-      onUpdateMeeting({
+    if (!isAdmin || !onUpdateMeeting || meetingSaving) return;
+    if (!safeUrl(editUrl)) { setMeetingError('Gunakan tautan rapat http:// atau https:// yang valid.'); return; }
+    setMeetingSaving(true); setMeetingError('');
+    try {
+      await onUpdateMeeting({
         ...meeting,
-        title: editTitle,
-        scheduledTime: editTime,
-        meetUrl: editUrl,
-        agendaNote: editAgendaNote
+        title: editTitle.trim(),
+        scheduledTime: editTime.trim(),
+        meetUrl: editUrl.trim(),
+        agendaNote: editAgendaNote.trim()
       });
-    }
-    setIsEditing(false);
+      setIsEditing(false);
+    } catch (error) { setMeetingError(`Rapat belum tersimpan: ${(error as Error).message}`); }
+    finally { setMeetingSaving(false); }
   };
 
   return (
@@ -94,7 +104,7 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
 
           {isAdmin && (
             <button
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={() => { setMeetingError(''); setEditTitle(isConfigured ? meeting.title : ''); setEditTime(isConfigured ? meeting.scheduledTime : ''); setEditUrl(isConfigured ? meeting.meetUrl : ''); setEditAgendaNote(isConfigured ? meeting.agendaNote : ''); setIsEditing(true); }}
               className="px-4 py-2 bg-yellow-300 hover:bg-yellow-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center gap-1 shrink-0"
             >
               <Edit3 className="w-4 h-4" />
@@ -105,13 +115,13 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
       </div>
 
       {/* Admin Edit Modal / Box */}
-      {isEditing && (
+      {isEditing && isAdmin && (
         <div className="bg-white rounded-3xl border-4 border-black p-5 shadow-[6px_6px_0_0_#000]">
           <h3 className="font-black text-sm text-black mb-3">⚙️ Edit Konfigurasi Rapat Online</h3>
           <form onSubmit={handleSaveEdit} className="space-y-3">
             <div>
               <label className="block text-xs font-black text-black mb-1">Judul Rapat</label>
-              <input
+              <input required maxLength={200}
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
@@ -120,7 +130,7 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
             </div>
             <div>
               <label className="block text-xs font-black text-black mb-1">Waktu Pelaksanaan</label>
-              <input
+              <input required maxLength={200}
                 type="text"
                 value={editTime}
                 onChange={(e) => setEditTime(e.target.value)}
@@ -130,7 +140,7 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
             <div>
               <label className="block text-xs font-black text-black mb-1">Link Google Meet</label>
               <input
-                type="text"
+                required type="url" maxLength={2000}
                 value={editUrl}
                 onChange={(e) => setEditUrl(e.target.value)}
                 className="w-full p-2 rounded-xl border-2 border-black font-bold text-xs"
@@ -145,6 +155,7 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
                 className="w-full p-2 rounded-xl border-2 border-black font-bold text-xs"
               />
             </div>
+            {meetingError && <p role="alert" className="portal-error">{meetingError}</p>}
             <div className="flex justify-end gap-2">
               <button
                 type="button"
@@ -154,10 +165,10 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
                 Batal
               </button>
               <button
-                type="submit"
+                type="submit" disabled={meetingSaving}
                 className="px-4 py-1.5 bg-purple-600 text-white font-black text-xs rounded-lg border border-black shadow-[2px_2px_0_0_#000]"
               >
-                Simpan
+                {meetingSaving ? 'Menyimpan…' : 'Simpan'}
               </button>
             </div>
           </form>
@@ -165,11 +176,11 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
       )}
 
       {/* Meeting Big Join Card */}
-      <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-[6px_6px_0_0_#000] grid md:grid-cols-3 gap-6 items-center">
+      {isConfigured ? <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-[6px_6px_0_0_#000] grid md:grid-cols-3 gap-6 items-center">
         <div className="md:col-span-2 space-y-3">
           <div className="flex items-center gap-2">
-            <span className="bg-red-500 text-white font-black text-xs px-3 py-0.5 rounded-full border border-black shadow-[1px_1px_0_0_#000] animate-pulse">
-              🔴 LIVE MEETING ROOM
+            <span className="bg-cyan-100 text-black font-black text-xs px-3 py-0.5 rounded-full border border-black shadow-[1px_1px_0_0_#000]">
+              Informasi rapat
             </span>
             <span className="text-xs font-extrabold text-purple-700 flex items-center gap-1">
               <Clock className="w-3.5 h-3.5" />
@@ -196,12 +207,12 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
           </div>
 
           <a
-            href={meeting.meetUrl}
+            href={safeUrl(meeting.meetUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-black text-sm rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] flex items-center justify-center gap-2 transition-transform active:scale-95"
           >
-            <span>JOIN GOOGLE MEET NOW 🚀</span>
+            <span>Buka ruang rapat ↗</span>
             <ExternalLink className="w-4 h-4" />
           </a>
 
@@ -222,34 +233,35 @@ export const MeetingView: React.FC<MeetingViewProps> = ({
             )}
           </button>
         </div>
-      </div>
+      </div> : <section className="bg-yellow-100 border-3 border-black rounded-3xl p-6 shadow-[4px_4px_0_#000]"><h2 className="font-black text-xl">Belum ada rapat online yang diumumkan</h2><p className="font-semibold text-sm mt-2">Pengurus akan menampilkan tautan dan agenda setelah jadwal ditetapkan.</p></section>}
 
       {/* Interactive Notes Scratchpad during online meetings */}
       <div className="bg-white rounded-3xl border-3 border-black p-5 shadow-[4px_4px_0_0_#000]">
         <div className="flex items-center justify-between mb-3 border-b-2 border-black pb-2">
           <h3 className="font-black text-sm text-black flex items-center gap-2">
-            <span>📝</span> Catatan & Scratchpad Rapat
+            <span>📝</span> Catatan hasil rapat
           </h3>
           <div className="flex items-center gap-2">
             {notesSaving && <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Menyimpan...</span>}
             {notesSaved && <span className="text-[10px] font-bold text-emerald-600">Tersimpan ✓</span>}
-            <button
+            {isAdmin && <button
               onClick={handleNotesBlur}
+              disabled={notesSaving || notes === savedNotes}
               className="px-3 py-1 bg-purple-600 text-white font-black text-[10px] rounded-lg border border-black shadow-[1px_1px_0_0_#000]"
             >
               Simpan Catatan
-            </button>
+            </button>}
           </div>
         </div>
 
-        <textarea
+        {isAdmin ? <textarea
           rows={6}
           value={notes}
           onChange={handleNotesChange}
-          onBlur={handleNotesBlur}
           placeholder="Tulis ringkasan rapat atau poin penting hasil diskusi di sini..."
           className="w-full p-3 rounded-2xl border-2 border-black font-bold text-xs bg-amber-50/50 focus:outline-none focus:ring-2 focus:ring-purple-600 leading-relaxed"
-        />
+        /> : notes ? <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{notes}</p> : <p className="text-sm font-semibold text-gray-600">Belum ada catatan hasil rapat yang diterbitkan.</p>}
+        {notesError && <p role="alert" className="portal-error">{notesError}</p>}
       </div>
     </div>
   );

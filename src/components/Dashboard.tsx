@@ -4,7 +4,7 @@ import { ScheduleItem, DriveFolder, AnnouncementItem } from '../types';
 import { Calendar, HardDrive, DollarSign, Users, Sparkles, MapPin, Clock, ArrowRight, Video, FileText, CheckCircle2 } from 'lucide-react';
 import { formatRupiah } from '../utils/export';
 import { FeatureLinks } from '../features/portal/PortalHub';
-import { upcomingSchedule } from '../features/portal/model';
+import { safeUrl, upcomingSchedule } from '../features/portal/model';
 
 interface DashboardProps {
   schedules: ScheduleItem[];
@@ -87,7 +87,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               📚 File Pembelajaran
             </p>
             <p className="text-sm sm:text-base font-black text-black leading-tight mt-0.5">
-              {totalFiles} File
+              ≈{totalFiles} File
             </p>
             <p className="text-xs font-bold text-amber-900 mt-1">Google Drive SIXDRIVE</p>
           </button>
@@ -207,10 +207,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          {driveFolders.map((folder) => (
+          {driveFolders.filter((folder) => safeUrl(folder.url)).map((folder) => (
             <a
               key={folder.id}
-              href={folder.url}
+              href={safeUrl(folder.url)}
               target="_blank"
               rel="noopener noreferrer"
               className="p-3 bg-white rounded-2xl border-2 border-black shadow-[3px_3px_0_0_#000] hover:-translate-y-1 transition-transform text-center flex flex-col items-center justify-center group"
@@ -222,7 +222,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {folder.title}
               </h4>
               <p className="text-[10px] font-extrabold text-purple-700 mt-0.5">
-                {folder.fileCount} file →
+                ≈{folder.fileCount} file →
               </p>
             </a>
           ))}

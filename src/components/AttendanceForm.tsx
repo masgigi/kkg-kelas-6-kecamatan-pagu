@@ -9,12 +9,13 @@ import {
   User,
 } from 'lucide-react';
 import type { AttendanceItem, ScheduleItem, TeacherItem } from '../types';
+import { todayJakarta } from '../features/portal/model';
 
 interface AttendanceFormProps {
   schedules: ScheduleItem[];
   teachers: TeacherItem[];
   attendance: AttendanceItem[];
-  onSubmit: (record: Omit<AttendanceItem, 'id'>) => void;
+  onSubmit: (record: Omit<AttendanceItem, 'id'>) => Promise<void>;
 }
 
 const ACTIVE_SCHEDULE_STATUSES: ScheduleItem['status'][] = [
@@ -38,6 +39,7 @@ const formatTime = (date: Date) =>
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
+    timeZone: 'Asia/Jakarta',
   }).format(date);
 
 export default function AttendanceForm({
@@ -56,10 +58,10 @@ export default function AttendanceForm({
   const [isTeacherListOpen, setIsTeacherListOpen] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
   const [submittedAt, setSubmittedAt] = useState<Date | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const availableSchedules = useMemo(
-    () => schedules.filter((schedule) => ACTIVE_SCHEDULE_STATUSES.includes(schedule.status)),
-    [schedules],
+  const availableSchedules = schedules.filter(
+    (schedule) => ACTIVE_SCHEDULE_STATUSES.includes(schedule.status) && schedule.date === todayJakarta(),
   );
 
   const filteredTeachers = useMemo(() => {
@@ -88,11 +90,17 @@ export default function AttendanceForm({
     setErrorMessage('');
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isSubmitting) return;
     setErrorMessage('');
 
-    if (!selectedSchedule || !selectedTeacher) {
+    if (selectedSchedule && (selectedSchedule.date !== todayJakarta() || !ACTIVE_SCHEDULE_STATUSES.includes(selectedSchedule.status))) {
+      setValidationMessage('Absensi hanya tersedia untuk jadwal hari ini.');
+      return;
+    }
+
+    if (!selectedSchedule || !selectedTeacher || !availableSchedules.some((item) => item.id === selectedSchedule.id)) {
       setValidationMessage('Silakan pilih jadwal dan nama guru terlebih dahulu.');
       return;
     }
@@ -109,19 +117,30 @@ export default function AttendanceForm({
       return;
     }
 
+    const schedule = selectedSchedule;
+    const teacher = selectedTeacher;
     const now = new Date();
-    onSubmit({
-      scheduleId: selectedSchedule.id,
-      teacherId: selectedTeacher.id,
-      teacherName: selectedTeacher.name,
-      school: selectedTeacher.school,
-      status,
-      checkedInAt: now.toISOString(),
-      ...(note.trim() ? { note: note.trim() } : {}),
-    });
-    setSubmittedAt(now);
-    setIsSubmitted(true);
-    setValidationMessage('');
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        scheduleId: schedule.id,
+        teacherId: teacher.id,
+        teacherName: teacher.name,
+        school: teacher.school,
+        status,
+        checkedInAt: now.toISOString(),
+        ...(note.trim() ? { note: note.trim() } : {}),
+      });
+      setSelectedSchedule(schedule);
+      setSelectedTeacher(teacher);
+      setSubmittedAt(now);
+      setIsSubmitted(true);
+      setValidationMessage('');
+    } catch {
+      setErrorMessage('Absensi belum tersimpan. Periksa koneksi dan coba lagi.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -173,6 +192,9 @@ export default function AttendanceForm({
                     ))}
                   </select>
                 </div>
+                {availableSchedules.length === 0 && (
+                  <p className="mt-2 text-sm font-bold" role="status">Belum ada jadwal KKG hari ini untuk absensi.</p>
+                )}
                 {selectedSchedule && (
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-bold">
                     <span className="flex items-center gap-1"><Calendar className="h-4 w-4" aria-hidden="true" />{formatDate(selectedSchedule.date)}</span>
@@ -246,8 +268,8 @@ export default function AttendanceForm({
                 </div>
               )}
 
-              <button type="submit" className="w-full border-2 border-black bg-purple-600 px-6 py-4 text-lg font-black text-white shadow-[5px_5px_0_#000] transition-transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0_#000] focus:outline-none focus:ring-4 focus:ring-yellow-300">
-                Kirim Absensi
+              <button type="submit" disabled={isSubmitting || availableSchedules.length === 0} className="w-full border-2 border-black bg-purple-600 px-6 py-4 text-lg font-black text-white shadow-[5px_5px_0_#000] transition-transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0_#000] focus:outline-none focus:ring-4 focus:ring-yellow-300 disabled:cursor-not-allowed disabled:opacity-60">
+                {isSubmitting ? 'Menyimpan Absensi...' : 'Kirim Absensi'}
               </button>
             </form>
           )}

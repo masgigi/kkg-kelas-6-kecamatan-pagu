@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserSession } from '../types';
-import { User, Key, CheckCircle2, AlertCircle, LogOut, Printer, School, ShieldCheck, History } from 'lucide-react';
+import { User, Key, AlertCircle, LogOut, School, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface TeacherLoginModalProps {
@@ -8,8 +8,7 @@ interface TeacherLoginModalProps {
   onClose: () => void;
   userSession: UserSession;
   setUserSession: (session: UserSession) => void;
-  onOpenLoginHistory?: () => void;
-  onRecordLoginHistory?: (entry: { role: 'teacher' | 'admin'; schoolName: string; teacherName: string }) => void;
+  onRecordLoginHistory?: (entry: { role: 'teacher' | 'admin'; schoolName: string; teacherName: string }) => Promise<void>;
 }
 
 export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
@@ -17,7 +16,6 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
   onClose,
   userSession,
   setUserSession,
-  onOpenLoginHistory,
   onRecordLoginHistory
 }) => {
   const [selectedSchool, setSelectedSchool] = useState('');
@@ -42,21 +40,25 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
     const verified = Array.isArray(data) ? data[0] : data;
 
     if (!error && verified) {
+      if (onRecordLoginHistory) {
+        try {
+          await onRecordLoginHistory({
+            role: 'teacher',
+            schoolName: verified.school_name,
+            teacherName: verified.teacher_name
+          });
+        } catch {
+          setErrorMsg('Login terverifikasi, tetapi riwayat belum tersimpan. Periksa koneksi dan coba lagi.');
+          return;
+        }
+      }
+
       setUserSession({
         isLoggedIn: true,
         role: 'teacher',
         schoolName: verified.school_name,
         teacherName: verified.teacher_name
       });
-
-      if (onRecordLoginHistory) {
-        onRecordLoginHistory({
-          role: 'teacher',
-          schoolName: verified.school_name,
-          teacherName: verified.teacher_name
-        });
-      }
-
       setPasswordInput('');
       onClose();
     } else {
@@ -109,17 +111,7 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
               </p>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  alert(`📥 Surat Keterangan Keanggotaan KKG untuk ${userSession.teacherName} (${userSession.schoolName}) telah diunduh!`);
-                }}
-                className="flex-1 py-2.5 bg-yellow-300 hover:bg-yellow-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center justify-center gap-1"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Cetak Status Member</span>
-              </button>
-
+            <div className="flex justify-end">
               <button
                 onClick={handleLogout}
                 className="py-2.5 px-4 bg-red-400 hover:bg-red-500 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center gap-1"
@@ -182,21 +174,6 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
           </form>
         )}
 
-        {onOpenLoginHistory && (
-          <div className="pt-2 border-t-2 border-black flex justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onOpenLoginHistory();
-              }}
-              className="text-xs font-black text-purple-700 hover:underline flex items-center gap-1.5 py-1"
-            >
-              <History className="w-4 h-4" />
-              <span>Lihat Riwayat Login Guru & Admin →</span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

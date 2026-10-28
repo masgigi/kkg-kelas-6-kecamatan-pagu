@@ -1,9 +1,8 @@
-import { isSupabaseConfigured, supabase, supabaseAdminEmail } from '../lib/supabase';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import type { AttendanceItem, ScheduleItem, TeacherItem } from '../types';
 import {
   initialAnnouncements,
   initialDriveFolders,
-  initialLoginHistory,
   initialOnlineMeeting,
   initialSchedules,
   initialTeachers,
@@ -147,16 +146,24 @@ export function subscribeToPublicAttendanceChanges(onChange: () => void): () => 
 
 async function persistSnapshot(collectionName: string, data: any): Promise<void> {
   if (!isSupabaseConfigured || isSyncingFromSupabase) return;
+  if (collectionName === COLLECTIONS.loginHistory) {
+    throw new Error('Riwayat login harus ditulis sebagai satu catatan, bukan snapshot koleksi.');
+  }
 
-  const { data: authData } = await supabase.auth.getSession();
-  const isAdminSession =
-    authData.session?.user?.email?.toLowerCase() === supabaseAdminEmail;
+  const { data: authData, error: authError } = await supabase.auth.getSession();
+  if (authError) throw authError;
+  let isAdminSession = false;
+  if (authData.session) {
+    const { data: authorized, error: accessError } = await supabase.rpc('is_kkg_admin');
+    if (accessError) throw accessError;
+    isAdminSession = authorized === true;
+  }
 
-  // Public forms may insert a new attendance/login row, but only the admin is
+  // Public forms may insert a new attendance row, but only the admin is
   // allowed to reconcile, update, or delete the complete remote collection.
   if (
     !isAdminSession &&
-    (collectionName === COLLECTIONS.attendance || collectionName === COLLECTIONS.loginHistory)
+    collectionName === COLLECTIONS.attendance
   ) {
     if (!Array.isArray(data) || data.length === 0) return;
     const { error } = await supabase.from(collectionName).insert(toDatabaseRow(collectionName, data[0]));
@@ -213,8 +220,7 @@ export async function resetAndRebuildSupabaseData() {
   const defaults = [
     [COLLECTIONS.schedules, initialSchedules], [COLLECTIONS.transactions, initialTransactions],
     [COLLECTIONS.teachers, initialTeachers], [COLLECTIONS.driveFolders, initialDriveFolders],
-    [COLLECTIONS.announcements, initialAnnouncements],
-    [COLLECTIONS.loginHistory, initialLoginHistory], [COLLECTIONS.attendance, []]
+    [COLLECTIONS.announcements, initialAnnouncements], [COLLECTIONS.attendance, []]
   ] as const;
   for (const [collection, items] of defaults) await persistSnapshot(collection, items);
   await persistSnapshot(COLLECTIONS.onlineMeeting, initialOnlineMeeting);
@@ -226,21 +232,8 @@ function writeLocalCache(storageKey: string, value: any) {
   finally { isSyncingFromSupabase = false; }
 }
 
-function readLocalCache(storageKey: string): any {
-  try {
-    const value = localStorage.getItem(storageKey);
-    return value ? JSON.parse(value) : null;
-  } catch { return null; }
-}
-
-function processSnapshotData(collectionName: string, storageKey: string, items: any[], initialItems: any[], seedWhenEmpty: boolean) {
-  let itemsToUse = items;
-  if (seedWhenEmpty && items.length === 0) {
-    const localItems = readLocalCache(storageKey);
-    itemsToUse = Array.isArray(localItems) && localItems.length > 0 ? localItems : initialItems;
-    void saveToSupabase(collectionName, itemsToUse);
-  }
-  writeLocalCache(storageKey, itemsToUse);
+function processSnapshotData(storageKey: string, items: any[]) {
+  writeLocalCache(storageKey, items);
 }
 
 export function initSupabaseListeners(onUpdate: (key: string) => void): () => void {
@@ -250,34 +243,30 @@ export function initSupabaseListeners(onUpdate: (key: string) => void): () => vo
   }
 
   const collections = [
-    { table: COLLECTIONS.schedules, key: STORAGE_KEYS.schedules, initial: initialSchedules },
-    { table: COLLECTIONS.transactions, key: STORAGE_KEYS.transactions, initial: initialTransactions },
-    { table: COLLECTIONS.teachers, key: STORAGE_KEYS.teachers, initial: initialTeachers },
-    { table: COLLECTIONS.driveFolders, key: STORAGE_KEYS.driveFolders, initial: initialDriveFolders },
-    { table: COLLECTIONS.announcements, key: STORAGE_KEYS.announcements, initial: initialAnnouncements },
-    { table: COLLECTIONS.loginHistory, key: STORAGE_KEYS.loginHistory, initial: initialLoginHistory },
-    { table: COLLECTIONS.attendance, key: STORAGE_KEYS.attendance, initial: [] }
+    { table: COLLECTIONS.schedules, key: STORAGE_KEYS.schedules },
+    { table: COLLECTIONS.transactions, key: STORAGE_KEYS.transactions },
+    { table: COLLECTIONS.teachers, key: STORAGE_KEYS.teachers },
+    { table: COLLECTIONS.driveFolders, key: STORAGE_KEYS.driveFolders },
+    { table: COLLECTIONS.announcements, key: STORAGE_KEYS.announcements },
+    { table: COLLECTIONS.attendance, key: STORAGE_KEYS.attendance }
   ];
 
-  const refreshCollection = async (entry: typeof collections[number], seedWhenEmpty: boolean) => {
+  const refreshCollection = async (entry: typeof collections[number]) => {
     const { data, error } = await supabase
       .from(entry.table)
       .select(SELECT_COLUMNS[entry.table] || '*');
     if (error) throw error;
     const rows = (data || []).map((row) => fromDatabaseRow(entry.table, row));
-    processSnapshotData(entry.table, entry.key, rows, entry.initial, seedWhenEmpty);
+    processSnapshotData(entry.key, rows);
     onUpdate(entry.key);
   };
 
-  Promise.allSettled(collections.map((entry) => refreshCollection(entry, true)))
+  Promise.allSettled(collections.map((entry) => refreshCollection(entry)))
     .then(async (results) => {
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
           const table = collections[index].table;
-          // Protected collections are intentionally unavailable before admin login.
-          if (table !== COLLECTIONS.loginHistory) {
-            console.error(`Supabase initial sync failed (${table}):`, result.reason);
-          }
+          console.error(`Supabase initial sync failed (${table}):`, result.reason);
         }
       });
       const { data, error } = await supabase.from(COLLECTIONS.onlineMeeting)
@@ -287,7 +276,8 @@ export function initSupabaseListeners(onUpdate: (key: string) => void): () => vo
         writeLocalCache(STORAGE_KEYS.onlineMeeting, fromDatabaseRow(COLLECTIONS.onlineMeeting, data));
         onUpdate(STORAGE_KEYS.onlineMeeting);
       } else {
-        await saveToSupabase(COLLECTIONS.onlineMeeting, initialOnlineMeeting);
+        writeLocalCache(STORAGE_KEYS.onlineMeeting, { id: 'meet-1', title: '', scheduledTime: '', meetUrl: '', status: 'Selesai', agendaNote: '' });
+        onUpdate(STORAGE_KEYS.onlineMeeting);
       }
     })
     .catch((error) => console.error('Supabase initial sync failed:', error))
@@ -297,7 +287,7 @@ export function initSupabaseListeners(onUpdate: (key: string) => void): () => vo
     .channel(`${entry.table}-changes`)
     .on('postgres_changes', { event: '*', schema: 'public', table: entry.table }, () => {
       if (isSyncingFromSupabase) return;
-      void refreshCollection(entry, false)
+      void refreshCollection(entry)
         .catch((error) => console.error(`Supabase realtime refresh error (${entry.table}):`, error));
     }).subscribe());
 
@@ -306,8 +296,10 @@ export function initSupabaseListeners(onUpdate: (key: string) => void): () => vo
       if (isSyncingFromSupabase) return;
       const { data, error } = await supabase.from(COLLECTIONS.onlineMeeting)
         .select(SELECT_COLUMNS[COLLECTIONS.onlineMeeting]).eq('id', 'meet-1').maybeSingle();
-      if (!error && data) {
-        writeLocalCache(STORAGE_KEYS.onlineMeeting, fromDatabaseRow(COLLECTIONS.onlineMeeting, data));
+      if (!error) {
+        writeLocalCache(STORAGE_KEYS.onlineMeeting, data
+          ? fromDatabaseRow(COLLECTIONS.onlineMeeting, data)
+          : { id: 'meet-1', title: '', scheduledTime: '', meetUrl: '', status: 'Selesai', agendaNote: '' });
         onUpdate(STORAGE_KEYS.onlineMeeting);
       }
     }).subscribe());

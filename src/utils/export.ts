@@ -29,6 +29,16 @@ export function formatRupiah(amount: number): string {
   }).format(amount);
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
+}
+
+function csvCell(value: string | number): string {
+  const raw = String(value);
+  const safe = /^[=+@\-\t\r]/.test(raw) ? `'${raw}` : raw;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
 export function exportTransactionsToCSV(transactions: TransactionItem[], monthYearLabel: string = 'Agustus 2026') {
   const { totalMasuk, totalKeluar, saldo } = calculateCashSummary(transactions);
 
@@ -36,18 +46,18 @@ export function exportTransactionsToCSV(transactions: TransactionItem[], monthYe
   const rows = transactions.map((tx, idx) => [
     idx + 1,
     tx.date,
-    `"${tx.category}"`,
-    `"${tx.description.replace(/"/g, '""')}"`,
+    tx.category,
+    tx.description,
     tx.type === 'masuk' ? 'Pemasukan' : 'Pengeluaran',
     tx.amount
   ]);
 
   rows.push([]);
-  rows.push(['', '', '', '"TOTAL PEMASUKAN"', '', totalMasuk]);
-  rows.push(['', '', '', '"TOTAL PENGELUARAN"', '', totalKeluar]);
-  rows.push(['', '', '', '"SALDO KAS SAAT INI"', '', saldo]);
+  rows.push(['', '', '', 'TOTAL PEMASUKAN', '', totalMasuk]);
+  rows.push(['', '', '', 'TOTAL PENGELUARAN', '', totalKeluar]);
+  rows.push(['', '', '', 'SALDO KAS SAAT INI', '', saldo]);
 
-  const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+  const csvContent = '\uFEFF' + [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -57,6 +67,7 @@ export function exportTransactionsToCSV(transactions: TransactionItem[], monthYe
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function printMonthlyReport(
@@ -78,9 +89,9 @@ export function printMonthlyReport(
       (tx, idx) => `
     <tr>
       <td style="text-align: center;">${idx + 1}</td>
-      <td>${tx.date}</td>
-      <td><strong>${tx.category}</strong></td>
-      <td>${tx.description}</td>
+      <td>${escapeHtml(tx.date)}</td>
+      <td><strong>${escapeHtml(tx.category)}</strong></td>
+      <td>${escapeHtml(tx.description)}</td>
       <td style="text-align: right; color: ${tx.type === 'masuk' ? '#059669' : '#dc2626'};">
         ${tx.type === 'masuk' ? formatRupiah(tx.amount) : '-'}
       </td>
@@ -180,7 +191,7 @@ export function printMonthlyReport(
         <div class="header">
           <h1>KELOMPOK KERJA GURU (KKG) KELAS 6</h1>
           <h2>KECAMATAN PAGU - KABUPATEN KEDIRI</h2>
-          <p>Portal Digital KKG6UP! • LAPORAN KEUANGAN BULAN ${monthLabel.toUpperCase()}</p>
+          <p>Portal Digital KKG6UP! • LAPORAN KEUANGAN: ${escapeHtml(monthLabel.toUpperCase())}</p>
         </div>
 
         <div class="summary-cards">
@@ -219,12 +230,12 @@ export function printMonthlyReport(
           <div class="sig-box">
             <p>Mengetahui,<br><strong>Bendahara KKG Pagu</strong></p>
             <div class="sig-space"></div>
-            <p><u><strong>${signedByTreasurer}</strong></u></p>
+            <p><u><strong>${escapeHtml(signedByTreasurer)}</strong></u></p>
           </div>
           <div class="sig-box">
             <p>Pagu, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br><strong>Ketua KKG Kelas 6 Pagu</strong></p>
             <div class="sig-space"></div>
-            <p><u><strong>${signedByLeader}</strong></u></p>
+            <p><u><strong>${escapeHtml(signedByLeader)}</strong></u></p>
           </div>
         </div>
 

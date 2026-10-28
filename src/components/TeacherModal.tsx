@@ -5,7 +5,7 @@ import { Users, X, CheckCircle2, School, User } from 'lucide-react';
 interface TeacherModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (teacher: Omit<TeacherItem, 'id'> | TeacherItem) => void;
+  onSave: (teacher: Omit<TeacherItem, 'id'> | TeacherItem) => Promise<void>;
   initialTeacher?: TeacherItem | null;
 }
 
@@ -18,6 +18,8 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
   const [name, setName] = useState('');
   const [school, setSchool] = useState('');
   const [role, setRole] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (initialTeacher) {
@@ -26,15 +28,16 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
       setRole(initialTeacher.role || 'Guru Kelas VI');
     } else {
       setName('');
-      setSchool('SDN SEMEN');
+      setSchool('');
       setRole('Guru Kelas VI');
     }
   }, [initialTeacher, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     if (!name.trim() || !school.trim()) {
       alert('Mohon isi Nama Guru dan Sekolah.');
       return;
@@ -47,8 +50,10 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
       role: role.trim() || 'Guru Kelas VI'
     };
 
-    onSave(teacherData);
-    onClose();
+    setSaving(true); setError('');
+    try { await onSave(teacherData); onClose(); }
+    catch (reason) { setError((reason as Error).message); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -71,7 +76,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={onClose} disabled={saving}
             className="p-1.5 bg-white hover:bg-gray-100 text-black rounded-xl border-2 border-black font-black shadow-[2px_2px_0_0_#000]"
           >
             <X className="w-5 h-5" />
@@ -80,6 +85,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && <p role="alert" className="portal-error">{error}</p>}
           
           {/* Nama Guru */}
           <div>
@@ -135,17 +141,17 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
           <div className="pt-3 border-t-2 border-black flex justify-end gap-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={onClose} disabled={saving}
               className="px-4 py-2 bg-gray-200 text-black font-black text-xs rounded-xl border-2 border-black"
             >
               Batal
             </button>
             <button
-              type="submit"
+              type="submit" disabled={saving}
               className="px-6 py-2 bg-cyan-400 hover:bg-cyan-500 text-black font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] transition-transform active:scale-95 flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Simpan Data Guru</span>
+              <span>{saving ? 'Menyimpan…' : 'Simpan Data Guru'}</span>
             </button>
           </div>
 

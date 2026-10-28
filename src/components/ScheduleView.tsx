@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ScheduleItem } from '../types';
-import { Calendar, MapPin, Clock, Download, ExternalLink, Bell, CheckCircle2, Video, Plus, Trash2, Edit3, Search } from 'lucide-react';
+import { Calendar, MapPin, Clock, Download, CheckCircle2, Video, Plus, Trash2, Edit3, Search } from 'lucide-react';
+import { safeUrl, todayJakarta } from '../features/portal/model';
 
 interface ScheduleViewProps {
   schedules: ScheduleItem[];
@@ -19,24 +20,23 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   onAddSchedule,
   onEditSchedule,
   onDeleteSchedule,
-  notifEnabled,
-  setNotifEnabled,
-  setActiveTab
 }) => {
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('semua');
+  const today = todayJakarta();
+  const displayStatus = (item: ScheduleItem) => item.status !== 'Selesai' && item.date < today ? 'Lewat' : item.status;
 
   const filteredSchedules = schedules.filter((item) => {
     const matchesSearch =
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.date.includes(searchTerm);
-    const matchesStatus = statusFilter === 'semua' || item.status === statusFilter;
+    const matchesStatus = statusFilter === 'semua' || displayStatus(item) === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status: ScheduleItem['status']) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Akan Datang':
         return 'bg-emerald-300 text-black border-black';
@@ -46,21 +46,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         return 'bg-cyan-300 text-black border-black';
       default:
         return 'bg-gray-200 text-gray-700 border-black';
-    }
-  };
-
-  const handleToggleNotif = () => {
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission().then((perm) => {
-        if (perm === 'granted') {
-          setNotifEnabled(true);
-          alert('🔔 Notifikasi real-time jadwal KKG telah diaktifkan!');
-        } else {
-          alert('Izin notifikasi ditolak di peramban.');
-        }
-      });
-    } else {
-      setNotifEnabled(!notifEnabled);
     }
   };
 
@@ -82,19 +67,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Notification Toggle */}
-          <button
-            onClick={handleToggleNotif}
-            className={`px-3 py-2 rounded-xl font-black text-xs border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center gap-1.5 transition-transform active:scale-95 ${
-              notifEnabled
-                ? 'bg-yellow-300 text-black hover:bg-yellow-400'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            <Bell className={`w-4 h-4 ${notifEnabled ? 'animate-bounce fill-black' : ''}`} />
-            <span>{notifEnabled ? '🔔 Notif Aktif' : '🔕 Notif Matik'}</span>
-          </button>
-
           {isAdmin && onAddSchedule && (
             <button
               onClick={onAddSchedule}
@@ -130,6 +102,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           <option value="Persiapan">🟡 Persiapan</option>
           <option value="Terjadwal">🔵 Terjadwal</option>
           <option value="Selesai">⚪ Selesai</option>
+          <option value="Lewat">⚪ Jadwal Lewat</option>
         </select>
       </div>
 
@@ -145,10 +118,10 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <span
                     className={`font-black text-xs px-3 py-0.5 rounded-full border border-black shadow-[1px_1px_0_0_#000] ${getStatusBadge(
-                      item.status
+                      displayStatus(item)
                     )}`}
                   >
-                    ● {item.status}
+                    ● {displayStatus(item)}
                   </span>
                   <span className="bg-purple-100 text-purple-900 font-extrabold text-xs px-2.5 py-0.5 rounded-lg border border-black">
                     📅 {item.date}
@@ -182,7 +155,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
                 {/* Google Maps Location Button */}
                 <a
-                  href={item.mapsUrl || `https://maps.google.com/?q=${encodeURIComponent(item.location)}`}
+                  href={safeUrl(item.mapsUrl) || `https://maps.google.com/?q=${encodeURIComponent(item.location)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-2.5 bg-pink-300 hover:bg-pink-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] transition-transform active:scale-95 flex items-center gap-1.5"
@@ -192,14 +165,16 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                   <span>Google Maps 🗺️</span>
                 </a>
 
-                {item.googleMeetUrl && (
-                  <button
-                    onClick={() => setActiveTab('meeting')}
+                {safeUrl(item.googleMeetUrl) && (
+                  <a
+                    href={safeUrl(item.googleMeetUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="p-2.5 bg-cyan-300 hover:bg-cyan-400 text-black rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] transition-transform active:scale-95"
-                    title="Rapat Online Google Meet"
+                    title={`Buka tautan rapat ${item.title}`}
                   >
                     <Video className="w-4 h-4" />
-                  </button>
+                  </a>
                 )}
 
                 {isAdmin && (
@@ -207,6 +182,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                     {onEditSchedule && (
                       <button
                         onClick={() => onEditSchedule(item)}
+                        aria-label={`Edit ${item.title}`}
                         className="p-2 bg-amber-300 text-black rounded-lg border border-black"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -215,6 +191,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                     {onDeleteSchedule && (
                       <button
                         onClick={() => onDeleteSchedule(item.id)}
+                        aria-label={`Hapus ${item.title}`}
                         className="p-2 bg-red-400 text-black rounded-lg border border-black"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -226,6 +203,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             </div>
           </div>
         ))}
+        {!filteredSchedules.length && <div className="bg-white border-3 border-black rounded-3xl p-8 text-center shadow-[4px_4px_0_#000]"><p className="text-lg font-black">Belum ada jadwal yang cocok.</p><p className="text-sm font-semibold text-gray-600 mt-2">Coba kata kunci atau status lain.</p></div>}
       </div>
 
       {/* Schedule Detail Modal */}
@@ -236,10 +214,10 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               <div>
                 <span
                   className={`font-black text-xs px-2.5 py-0.5 rounded-full border border-black ${getStatusBadge(
-                    selectedSchedule.status
+                    displayStatus(selectedSchedule)
                   )}`}
                 >
-                  ● {selectedSchedule.status}
+                  ● {displayStatus(selectedSchedule)}
                 </span>
                 <h3 className="text-xl font-black text-black mt-1">
                   {selectedSchedule.title}
@@ -274,9 +252,9 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             </div>
 
             <div className="pt-2 border-t-2 border-black flex flex-wrap gap-2">
-              {selectedSchedule.mapsUrl && (
+              {safeUrl(selectedSchedule.mapsUrl) && (
                 <a
-                  href={selectedSchedule.mapsUrl}
+                  href={safeUrl(selectedSchedule.mapsUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 py-2.5 bg-pink-400 hover:bg-pink-500 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] text-center flex items-center justify-center gap-1.5"
@@ -285,16 +263,13 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                   <span>Buka Google Maps</span>
                 </a>
               )}
-
-              <button
-                onClick={() => {
-                  alert(`📥 Surat undangan ${selectedSchedule.title} telah diunduh!`);
-                }}
+              {safeUrl(selectedSchedule.invitationUrl) && <a
+                href={safeUrl(selectedSchedule.invitationUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex-1 py-2.5 bg-yellow-300 hover:bg-yellow-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center justify-center gap-1.5"
-              >
-                <Download className="w-4 h-4" />
-                <span>Unduh Undangan</span>
-              </button>
+              ><Download className="w-4 h-4" /><span>Buka Undangan</span></a>}
+
             </div>
           </div>
         </div>

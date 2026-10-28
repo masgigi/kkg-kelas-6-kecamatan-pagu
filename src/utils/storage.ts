@@ -7,7 +7,6 @@ import {
   OnlineMeeting,
   SchoolAccount,
   UserSession,
-  LoginHistoryItem,
   AttendanceItem
 } from '../types';
 import {
@@ -17,8 +16,7 @@ import {
   initialTeachers,
   initialAnnouncements,
   initialOnlineMeeting,
-  initialSchoolAccounts,
-  initialLoginHistory
+  initialSchoolAccounts
 } from '../data/initialData';
 
 import { saveToSupabase, initSupabaseListeners, resetAndRebuildSupabaseData } from './supabaseSync';
@@ -60,10 +58,20 @@ function setStoredData<T>(key: string, value: T): void {
     if (key === STORAGE_KEYS.DRIVE_FOLDERS) saveToSupabase('drive_folders', value);
     if (key === STORAGE_KEYS.ANNOUNCEMENTS) saveToSupabase('announcements', value);
     if (key === STORAGE_KEYS.ONLINE_MEETING) saveToSupabase('online_meetings', value);
-    if (key === STORAGE_KEYS.LOGIN_HISTORY) saveToSupabase('login_history', value);
     if (key === STORAGE_KEYS.ATTENDANCE) saveToSupabase('attendance', value);
   } catch (err) {
     console.warn(`Error writing ${key} to localStorage:`, err);
+  }
+}
+
+// Explicit database writes in App use this cache path after the server confirms
+// success. It avoids a second full-collection snapshot reconciliation.
+function setCachedData<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    notifySync(key);
+  } catch (err) {
+    console.warn(`Error caching ${key}:`, err);
   }
 }
 
@@ -86,21 +94,26 @@ function notifySync(key: string) {
 export const storage = {
   getDriveFolders: (): DriveFolder[] => getStoredData(STORAGE_KEYS.DRIVE_FOLDERS, initialDriveFolders),
   setDriveFolders: (data: DriveFolder[]) => setStoredData(STORAGE_KEYS.DRIVE_FOLDERS, data),
+  cacheDriveFolders: (data: DriveFolder[]) => setCachedData(STORAGE_KEYS.DRIVE_FOLDERS, data),
 
   getSchedules: (): ScheduleItem[] => getStoredData(STORAGE_KEYS.SCHEDULES, initialSchedules),
   setSchedules: (data: ScheduleItem[]) => setStoredData(STORAGE_KEYS.SCHEDULES, data),
+  cacheSchedules: (data: ScheduleItem[]) => setCachedData(STORAGE_KEYS.SCHEDULES, data),
 
   getTransactions: (): TransactionItem[] => getStoredData(STORAGE_KEYS.TRANSACTIONS, initialTransactions),
   setTransactions: (data: TransactionItem[]) => setStoredData(STORAGE_KEYS.TRANSACTIONS, data),
+  cacheTransactions: (data: TransactionItem[]) => setCachedData(STORAGE_KEYS.TRANSACTIONS, data),
 
   getTeachers: (): TeacherItem[] => getStoredData(STORAGE_KEYS.TEACHERS, initialTeachers),
   setTeachers: (data: TeacherItem[]) => setStoredData(STORAGE_KEYS.TEACHERS, data),
+  cacheTeachers: (data: TeacherItem[]) => setCachedData(STORAGE_KEYS.TEACHERS, data),
 
   getAnnouncements: (): AnnouncementItem[] => getStoredData(STORAGE_KEYS.ANNOUNCEMENTS, initialAnnouncements),
   setAnnouncements: (data: AnnouncementItem[]) => setStoredData(STORAGE_KEYS.ANNOUNCEMENTS, data),
 
   getOnlineMeeting: (): OnlineMeeting => getStoredData(STORAGE_KEYS.ONLINE_MEETING, initialOnlineMeeting),
   setOnlineMeeting: (data: OnlineMeeting) => setStoredData(STORAGE_KEYS.ONLINE_MEETING, data),
+  cacheOnlineMeeting: (data: OnlineMeeting) => setCachedData(STORAGE_KEYS.ONLINE_MEETING, data),
 
   getSchoolAccounts: (): SchoolAccount[] => getStoredData(STORAGE_KEYS.SCHOOL_ACCOUNTS, initialSchoolAccounts),
   setSchoolAccounts: (data: SchoolAccount[]) => setStoredData(STORAGE_KEYS.SCHOOL_ACCOUNTS, data),
@@ -111,11 +124,14 @@ export const storage = {
   getNotifEnabled: (): boolean => getStoredData(STORAGE_KEYS.NOTIF_ENABLED, true),
   setNotifEnabled: (enabled: boolean) => setStoredData(STORAGE_KEYS.NOTIF_ENABLED, enabled),
 
-  getLoginHistory: (): LoginHistoryItem[] => getStoredData(STORAGE_KEYS.LOGIN_HISTORY, initialLoginHistory),
-  setLoginHistory: (data: LoginHistoryItem[]) => setStoredData(STORAGE_KEYS.LOGIN_HISTORY, data),
+  clearLegacyLoginHistoryCache: () => {
+    try { localStorage.removeItem(STORAGE_KEYS.LOGIN_HISTORY); }
+    catch (err) { console.warn('Error removing old login history cache:', err); }
+  },
 
   getAttendance: (): AttendanceItem[] => getStoredData(STORAGE_KEYS.ATTENDANCE, []),
   setAttendance: (data: AttendanceItem[]) => setStoredData(STORAGE_KEYS.ATTENDANCE, data),
+  cacheAttendance: (data: AttendanceItem[]) => setCachedData(STORAGE_KEYS.ATTENDANCE, data),
 
   resetToDefault: async () => {
     localStorage.clear();

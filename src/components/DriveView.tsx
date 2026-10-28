@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { DriveFolder, CategoryDrive } from '../types';
 import { HardDrive, ExternalLink, BookOpen, FileSpreadsheet, CheckSquare, FileText, FolderArchive, Presentation, Search, Plus, UploadCloud, Download, Edit2, Trash2 } from 'lucide-react';
 import { DriveUploadModal } from './DriveUploadModal';
+import { ContributionForm } from '../features/portal/Contributions';
+import { safeUrl } from '../features/portal/model';
 
 interface DriveViewProps {
   driveFolders: DriveFolder[];
@@ -22,6 +24,7 @@ export const DriveView: React.FC<DriveViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const filteredFolders = driveFolders.filter(
     (f) =>
@@ -66,7 +69,7 @@ export const DriveView: React.FC<DriveViewProps> = ({
               📚 Google Drive KKG
             </h1>
             <p className="text-xs sm:text-sm font-bold text-black/80 mt-1 max-w-xl">
-              File administrasi & perangkat ajar Kurikulum Merdeka terintegrasi langsung dengan Google Drive KKG Pagu.
+              Tautan folder administrasi dan perangkat ajar KKG Pagu di Google Drive.
             </p>
           </div>
 
@@ -77,7 +80,7 @@ export const DriveView: React.FC<DriveViewProps> = ({
               className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center gap-1.5 transition-transform active:scale-95"
             >
               <UploadCloud className="w-4 h-4" />
-              <span>📤 Unggah File ke Drive</span>
+              <span>📤 Tambah ke Katalog</span>
             </button>}
 
             {/* INDUK GOOGLE DRIVE BUTTON */}
@@ -146,7 +149,7 @@ export const DriveView: React.FC<DriveViewProps> = ({
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="bg-yellow-300 text-black font-black text-xs px-3 py-1 rounded-full border border-black shadow-[1px_1px_0_0_#000]">
-                      {folder.fileCount} file
+                      ≈{folder.fileCount} file
                     </span>
                   </div>
                 </div>
@@ -160,39 +163,16 @@ export const DriveView: React.FC<DriveViewProps> = ({
               </div>
 
               <div className="space-y-2 mt-2">
-                {/* 2 Main Action Buttons: Unduh & Buka */}
-                <div className="flex gap-2">
-                  <a
-                    href={folder.url || '#'}
+                <div>
+                  {safeUrl(folder.url) ? <a
+                    href={safeUrl(folder.url)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={(e) => {
-                      if (!folder.url) {
-                        e.preventDefault();
-                        alert('Link Google Drive untuk kategori ini belum diatur oleh admin.');
-                      }
-                    }}
-                    className="flex-1 py-2.5 bg-yellow-300 hover:bg-yellow-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center justify-center gap-1 transition-transform active:scale-95 text-center"
+                    className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center justify-center gap-1 transition-transform active:scale-95 text-center"
                   >
-                    <Download className="w-4 h-4 shrink-0" />
-                    <span>Unduh File</span>
-                  </a>
-
-                  <a
-                    href={folder.url || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      if (!folder.url) {
-                        e.preventDefault();
-                        alert('Link Google Drive untuk kategori ini belum diatur oleh admin.');
-                      }
-                    }}
-                    className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] flex items-center justify-center gap-1 transition-transform active:scale-95 text-center"
-                  >
-                    <span>Buka Drive</span>
+                    <span>Buka Folder Google Drive</span>
                     <ExternalLink className="w-4 h-4 shrink-0" />
-                  </a>
+                  </a> : <span className="block rounded-xl bg-gray-100 border-2 border-black px-3 py-2.5 text-center text-xs font-bold text-gray-600">Tautan folder belum tersedia</span>}
                 </div>
 
                 {isAdmin && (
@@ -238,17 +218,17 @@ export const DriveView: React.FC<DriveViewProps> = ({
               Punya Modul / Perangkat Ajar Baru?
             </h4>
             <p className="text-xs font-bold text-gray-700 mt-0.5">
-              Bapak/Ibu Guru dapat mengunggah file langsung ke folder SIXDRIVE atau mengirimkan tautannya.
+              Bagikan tautan bahan ajar untuk ditinjau pengurus sebelum tampil di katalog. Pengurus dapat mengunggah berkas ke penyimpanan website.
             </p>
           </div>
         </div>
 
         <div className="flex gap-2 shrink-0">
           <button
-            onClick={() => setIsUploadModalOpen(true)}
+            onClick={() => isAdmin ? setIsUploadModalOpen(true) : setIsShareOpen(true)}
             className="px-4 py-2.5 bg-yellow-300 hover:bg-yellow-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] text-center transition-transform active:scale-95"
           >
-            📤 Unggah File Sekarang
+            {isAdmin ? '📤 Tambah ke Katalog' : '📤 Kirim Tautan Bahan Ajar'}
           </button>
           <a
             href="https://chat.whatsapp.com/H8awmBQpl361F1XfcsE6hG?s=cl&p=a&mlu=0&amv=0"
@@ -262,12 +242,13 @@ export const DriveView: React.FC<DriveViewProps> = ({
       </div>
 
       {/* Drive Upload Modal */}
-      <DriveUploadModal
+      {isAdmin && <DriveUploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onUploadSuccess={handleUploadComplete}
         categories={driveFolders.map((f) => f.title)}
-      />
+      />}
+      {isShareOpen && <ContributionForm kind="resource" onClose={() => setIsShareOpen(false)} />}
     </div>
   );
 };

@@ -65,7 +65,19 @@ export function safeUrl(value?: string): string {
   if (!value?.trim()) return '';
   try {
     const url = new URL(value.trim());
-    return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : '';
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) return '';
+    const hostname = url.hostname.toLowerCase();
+    const labels = hostname.split('.');
+    const isDnsName = labels.length >= 2 &&
+      labels.every(label => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)) &&
+      /^(?:[a-z]{2,63}|xn--[a-z0-9-]+)$/.test(labels[labels.length - 1]);
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+    const isIpAddress = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) || /^\[[0-9a-f:]+\]$/.test(hostname);
+    if (!isDnsName && !isLocal && !isIpAddress) return '';
+    if (['example.com', 'example.org', 'example.net'].includes(hostname) ||
+        /\.(?:example|invalid|test)$/.test(hostname) || url.pathname === '/-') return '';
+    if (hostname === 'meet.google.com' && /^\/kkg-pagu(?:-|\/|$)/.test(url.pathname)) return '';
+    return url.href;
   } catch { return ''; }
 }
 

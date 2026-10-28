@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AttendanceForm from './components/AttendanceForm';
 import { AttendanceAdmin } from './components/AttendanceAdmin';
 import {
@@ -19,7 +19,7 @@ import {
   subscribeToPublicAttendanceChanges,
   whenSupabaseReady
 } from './utils/supabaseSync';
-import { supabase, supabaseAdminEmail } from './lib/supabase';
+import { supabase } from './lib/supabase';
 import { usePortalContent, saveContent } from './features/portal/api';
 import { PortalHub } from './features/portal/PortalHub';
 import { blankContent, todayJakarta, upcomingSchedule } from './features/portal/model';
@@ -86,10 +86,15 @@ export default function App() {
     return cached.role === 'admin' ? { isLoggedIn: false, role: 'guest' } : cached;
   });
   const [notifEnabled, setNotifEnabled] = useState<boolean>(storage.getNotifEnabled());
-  const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>(storage.getLoginHistory());
+  const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>([]);
+  const [loginHistoryLoading, setLoginHistoryLoading] = useState(false);
+  const [loginHistoryError, setLoginHistoryError] = useState('');
+  const loginHistoryRequestId = useRef(0);
+  useEffect(() => { storage.clearLegacyLoginHistoryCache(); }, []);
   const [attendance, setAttendance] = useState<AttendanceItem[]>(storage.getAttendance());
   const [attendanceLoadError, setAttendanceLoadError] = useState('');
   const [attendanceReloadToken, setAttendanceReloadToken] = useState(0);
+  const [adminWriteError, setAdminWriteError] = useState('');
 
   // The public attendance page reads its required data directly from Supabase.
   // It never falls back to bundled sample data, so it stays consistent with the portal.
@@ -129,27 +134,31 @@ export default function App() {
     };
   }, [attendanceReloadToken, isPublicAttendance]);
 
-  // Admin access is valid only while an authorized Supabase Auth session exists.
+  // Admin access is verified against the server's current membership for each Auth session.
   useEffect(() => {
-    const applyAuthSession = (session: any) => {
-      const email = session?.user?.email?.toLowerCase();
-      const cachedSession = storage.getUserSession();
-      if (email && email === supabaseAdminEmail) {
-        const adminSession: UserSession = { isLoggedIn: true, role: 'admin' };
-        setUserSession(adminSession);
-        storage.setUserSession(adminSession);
-      } else if (cachedSession.role === 'admin') {
-        const guestSession: UserSession = { isLoggedIn: false, role: 'guest' };
-        setUserSession(guestSession);
-        storage.setUserSession(guestSession);
+    let active = true;
+    let checkVersion = 0;
+    const applyAuthSession = async (session: { user?: { id?: string } } | null) => {
+      const version = ++checkVersion;
+      let authorized = false;
+      if (session?.user?.id) {
+        const { data, error } = await supabase.rpc('is_kkg_admin');
+        authorized = !error && data === true;
       }
+      if (!active || version !== checkVersion) return;
+      const next: UserSession = authorized
+        ? { isLoggedIn: true, role: 'admin' }
+        : { isLoggedIn: false, role: 'guest' };
+      setUserSession(next);
+      storage.setUserSession(next);
     };
 
-    void supabase.auth.getSession().then(({ data }) => applyAuthSession(data.session));
+    void supabase.auth.getSession().then(({ data }) => void applyAuthSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      applyAuthSession(session);
+      // Supabase recommends deferring client API calls made after an auth event.
+      window.setTimeout(() => { void applyAuthSession(session); }, 0);
     });
-    return () => listener.subscription.unsubscribe();
+    return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
 
   // Modals state
@@ -174,43 +183,99 @@ export default function App() {
       setTeachers(storage.getTeachers());
       setAnnouncements(storage.getAnnouncements());
       setOnlineMeeting(storage.getOnlineMeeting());
-      setUserSession(storage.getUserSession());
-      setLoginHistory(storage.getLoginHistory());
       setAttendance(storage.getAttendance());
     });
     return unsubscribe;
   }, [isPublicAttendance]);
 
-  const handleSubmitAttendance = (record: Omit<AttendanceItem, 'id'>) => {
-    const newRecord: AttendanceItem = { ...record, id: `att-${Date.now()}` };
+  const handleSubmitAttendance = async (record: Omit<AttendanceItem, 'id'>) => {
+    const newRecord: AttendanceItem = { ...record, id: `att-${crypto.randomUUID()}` };
+    const { error } = await supabase.from('attendance').insert({
+      id: newRecord.id,
+      schedule_id: newRecord.scheduleId,
+      teacher_id: newRecord.teacherId,
+      teacher_name: newRecord.teacherName,
+      school: newRecord.school,
+      status: newRecord.status,
+      checked_in_at: newRecord.checkedInAt,
+      note: newRecord.note
+    });
+    if (error) throw new Error(`Absensi belum tersimpan: ${error.message}`);
     const updated = [newRecord, ...attendance];
     setAttendance(updated);
-    storage.setAttendance(updated);
+    storage.cacheAttendance(updated);
   };
 
-  const handleDeleteAttendance = (id: string) => {
+  const handleDeleteAttendance = async (id: string) => {
+    const { data, error } = await supabase.from('attendance').delete().eq('id', id).select('id').maybeSingle();
+    if (error || !data) {
+      setAdminWriteError(`Absensi belum dihapus: ${error?.message || 'Data tidak ditemukan di server.'}`);
+      return;
+    }
     const updated = attendance.filter((item) => item.id !== id);
     setAttendance(updated);
-    storage.setAttendance(updated);
+    storage.cacheAttendance(updated);
+    setAdminWriteError('');
   };
 
   const { saldo } = calculateCashSummary(transactions);
-  const isAdmin = userSession.role === 'admin';
+  const isAdmin = userSession.isLoggedIn && userSession.role === 'admin';
   const portal = usePortalContent(isAdmin);
   const visibleAnnouncements = announcements.filter(a => !a.expiresOn || a.expiresOn >= todayJakarta());
   const portalProps = { ...portal, isAdmin, teachers, navigate: setActiveTab };
 
-  const handleRecordLoginHistory = (entry: { role: 'teacher' | 'admin'; schoolName: string; teacherName: string }) => {
+  const refreshLoginHistory = async () => {
+    const requestId = ++loginHistoryRequestId.current;
+    setLoginHistoryLoading(true);
+    setLoginHistoryError('');
+    try {
+      const { data, error } = await supabase.from('login_history')
+        .select('id,role,school_name,teacher_name,timestamp,status')
+        .order('created_at', { ascending: false });
+      if (requestId !== loginHistoryRequestId.current) return;
+      if (error) throw error;
+      setLoginHistory((data || []).map((row): LoginHistoryItem => ({
+        id: row.id,
+        role: row.role === 'admin' ? 'admin' : 'teacher',
+        schoolName: row.school_name,
+        teacherName: row.teacher_name,
+        timestamp: row.timestamp || '',
+        status: row.status || 'Berhasil Login'
+      })));
+    } catch (error) {
+      if (requestId !== loginHistoryRequestId.current) return;
+      setLoginHistory([]);
+      setLoginHistoryError(`Riwayat login belum berhasil dimuat: ${(error as Error).message}`);
+    } finally {
+      if (requestId === loginHistoryRequestId.current) setLoginHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin) {
+      loginHistoryRequestId.current += 1;
+      setLoginHistory([]);
+      setLoginHistoryError('');
+      setLoginHistoryLoading(false);
+      setIsLoginHistoryOpen(false);
+      return;
+    }
+    void refreshLoginHistory();
+    return () => { loginHistoryRequestId.current += 1; };
+  }, [isAdmin, isLoginHistoryOpen]);
+
+  const handleRecordLoginHistory = async (entry: { role: 'teacher' | 'admin'; schoolName: string; teacherName: string }) => {
     const now = new Date();
     const formattedDate = now.toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta'
     });
-    const formattedTime = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const formattedTime = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
 
     const newLog: LoginHistoryItem = {
-      id: 'log-' + Date.now(),
+      id: `log-${crypto.randomUUID()}`,
       role: entry.role,
       schoolName: entry.schoolName,
       teacherName: entry.teacherName,
@@ -218,14 +283,16 @@ export default function App() {
       status: 'Berhasil Login'
     };
 
-    const updated = [newLog, ...loginHistory];
-    setLoginHistory(updated);
-    storage.setLoginHistory(updated);
-  };
-
-  const handleClearLoginHistory = () => {
-    setLoginHistory([]);
-    storage.setLoginHistory([]);
+    const { error } = await supabase.from('login_history').insert({
+      id: newLog.id,
+      role: newLog.role,
+      school_name: newLog.schoolName,
+      teacher_name: newLog.teacherName,
+      timestamp: newLog.timestamp,
+      status: newLog.status
+    });
+    if (error) throw new Error(`Riwayat login belum tersimpan: ${error.message}`);
+    if (entry.role === 'admin') await refreshLoginHistory();
   };
 
   const handleUploadDriveSuccess = async (fileInfo: {
@@ -240,28 +307,37 @@ export default function App() {
     setResourceMode('catalog');
   };
 
-  // Explicit mutation handlers that push updates to Firestore and local cache
-  const handleAddTransaction = (newTx: Omit<TransactionItem, 'id'>) => {
+  // Save each admin change in Supabase before updating the local cache.
+  const handleAddTransaction = async (newTx: Omit<TransactionItem, 'id'>) => {
     const tx: TransactionItem = {
       ...newTx,
-      id: 'tx-' + Date.now()
+      id: `tx-${crypto.randomUUID()}`
     };
+    const { error } = await supabase.from('transactions').insert({ id: tx.id, date: tx.date, description: tx.description, type: tx.type, amount: tx.amount, school_or_teacher: tx.schoolOrTeacher, category: tx.category });
+    if (error) throw new Error(`Transaksi belum tersimpan: ${error.message}`);
     const updated = [tx, ...transactions];
     setTransactions(updated);
-    storage.setTransactions(updated);
+    storage.cacheTransactions(updated);
+    setAdminWriteError('');
   };
 
-  const handleEditTransaction = (txData: TransactionItem) => {
+  const handleEditTransaction = async (txData: TransactionItem) => {
+    const { data, error } = await supabase.from('transactions').update({ date: txData.date, description: txData.description, type: txData.type, amount: txData.amount, school_or_teacher: txData.schoolOrTeacher, category: txData.category }).eq('id', txData.id).select('id').maybeSingle();
+    if (error || !data) throw new Error(`Transaksi belum tersimpan: ${error?.message || 'Data tidak ditemukan di server.'}`);
     const updated = transactions.map((t) => (t.id === txData.id ? txData : t));
     setTransactions(updated);
-    storage.setTransactions(updated);
+    storage.cacheTransactions(updated);
+    setAdminWriteError('');
   };
 
-  const handleDeleteTransaction = (id: string) => {
+  const handleDeleteTransaction = async (id: string) => {
     if (confirm('Hapus pencatatan transaksi ini?')) {
+      const { data, error } = await supabase.from('transactions').delete().eq('id', id).select('id').maybeSingle();
+      if (error || !data) throw new Error(`Transaksi belum dihapus: ${error?.message || 'Data tidak ditemukan di server.'}`);
       const updated = transactions.filter((t) => t.id !== id);
       setTransactions(updated);
-      storage.setTransactions(updated);
+      storage.cacheTransactions(updated);
+      setAdminWriteError('');
     }
   };
 
@@ -275,31 +351,32 @@ export default function App() {
     setIsScheduleModalOpen(true);
   };
 
-  const handleSaveSchedule = (scheduleData: Omit<ScheduleItem, 'id'> | ScheduleItem) => {
-    let updated: ScheduleItem[];
-    if ('id' in scheduleData && scheduleData.id) {
-      const exists = schedules.some((s) => s.id === scheduleData.id);
-      if (exists) {
-        updated = schedules.map((s) => (s.id === scheduleData.id ? (scheduleData as ScheduleItem) : s));
-      } else {
-        updated = [scheduleData as ScheduleItem, ...schedules];
-      }
-    } else {
-      const newSchedule: ScheduleItem = {
-        ...(scheduleData as Omit<ScheduleItem, 'id'>),
-        id: 'sch-' + Date.now()
-      };
-      updated = [newSchedule, ...schedules];
-    }
+  const handleSaveSchedule = async (scheduleData: Omit<ScheduleItem, 'id'> | ScheduleItem) => {
+    const existingSchedule = 'id' in scheduleData ? schedules.find(s => s.id === scheduleData.id) : undefined;
+    const schedule: ScheduleItem = 'id' in scheduleData && scheduleData.id
+      ? { ...existingSchedule, ...scheduleData } as ScheduleItem
+      : { ...scheduleData, id: `sch-${crypto.randomUUID()}` } as ScheduleItem;
+    const row = { id: schedule.id, title: schedule.title, date: schedule.date, time: schedule.time,
+      location: schedule.location, agenda: schedule.agenda, status: schedule.status,
+      invitation_url: schedule.invitationUrl || null, maps_url: schedule.mapsUrl || null,
+      google_meet_url: schedule.googleMeetUrl || null };
+    const { error } = await supabase.from('schedules').upsert(row, { onConflict: 'id' });
+    if (error) throw new Error(`Jadwal belum tersimpan: ${error.message}`);
+    const updated = schedules.some(s => s.id === schedule.id)
+      ? schedules.map(s => s.id === schedule.id ? schedule : s) : [schedule, ...schedules];
     setSchedules(updated);
-    storage.setSchedules(updated);
+    storage.cacheSchedules(updated);
+    setAdminWriteError('');
   };
 
-  const handleDeleteSchedule = (id: string) => {
+  const handleDeleteSchedule = async (id: string) => {
     if (confirm('Hapus jadwal pertemuan ini?')) {
+      const { data, error } = await supabase.from('schedules').delete().eq('id', id).select('id').maybeSingle();
+      if (error || !data) { setAdminWriteError(`Jadwal belum dihapus: ${error?.message || 'Data tidak ditemukan di server.'}`); return; }
       const updated = schedules.filter((s) => s.id !== id);
       setSchedules(updated);
-      storage.setSchedules(updated);
+      storage.cacheSchedules(updated);
+      setAdminWriteError('');
     }
   };
 
@@ -313,46 +390,43 @@ export default function App() {
     setIsTeacherModalOpen(true);
   };
 
-  const handleSaveTeacher = (teacherData: Omit<TeacherItem, 'id'> | TeacherItem) => {
-    let updated: TeacherItem[];
-    if ('id' in teacherData && teacherData.id) {
-      const exists = teachers.some((t) => t.id === teacherData.id);
-      if (exists) {
-        updated = teachers.map((t) => (t.id === teacherData.id ? (teacherData as TeacherItem) : t));
-      } else {
-        updated = [...teachers, teacherData as TeacherItem];
-      }
-    } else {
-      const newTeacher: TeacherItem = {
-        ...(teacherData as Omit<TeacherItem, 'id'>),
-        id: 't-' + Date.now()
-      };
-      updated = [...teachers, newTeacher];
-    }
+  const handleSaveTeacher = async (teacherData: Omit<TeacherItem, 'id'> | TeacherItem) => {
+    const teacher: TeacherItem = 'id' in teacherData && teacherData.id
+      ? teacherData as TeacherItem
+      : { ...teacherData, id: `t-${crypto.randomUUID()}` } as TeacherItem;
+    const { error } = await supabase.from('teachers').upsert({ id: teacher.id, name: teacher.name, school: teacher.school,
+      role: teacher.role }, { onConflict: 'id' });
+    if (error) throw new Error(`Data guru belum tersimpan: ${error.message}`);
+    const updated = teachers.some(t => t.id === teacher.id)
+      ? teachers.map(t => t.id === teacher.id ? teacher : t) : [...teachers, teacher];
     setTeachers(updated);
-    storage.setTeachers(updated);
+    storage.cacheTeachers(updated);
+    setAdminWriteError('');
   };
 
-  const handleDeleteTeacher = (id: string) => {
+  const handleDeleteTeacher = async (id: string) => {
     if (confirm('Hapus data guru ini dari database?')) {
+      const { data, error } = await supabase.from('teachers').delete().eq('id', id).select('id').maybeSingle();
+      if (error || !data) { setAdminWriteError(`Data guru belum dihapus: ${error?.message || 'Data tidak ditemukan di server.'}`); return; }
       const updated = teachers.filter((t) => t.id !== id);
       setTeachers(updated);
-      storage.setTeachers(updated);
+      storage.cacheTeachers(updated);
+      setAdminWriteError('');
     }
   };
 
   const handleSaveAnnouncement = async (ann: AnnouncementItem) => {
-    const { error } = await supabase.from('announcements').upsert({ id: ann.id, title: ann.title,
+    const { data, error } = await supabase.from('announcements').upsert({ id: ann.id, title: ann.title,
       date: ann.date, author: ann.author, content: ann.content, tags: ann.tags, is_pinned: ann.isPinned,
-      image_url: ann.imageUrl || null, expires_on: ann.expiresOn || null, attachment_url: ann.attachmentUrl || null });
-    if (error) throw new Error(`Pengumuman belum tersimpan: ${error.message}`);
+      image_url: ann.imageUrl || null, expires_on: ann.expiresOn || null, attachment_url: ann.attachmentUrl || null }).select('id').maybeSingle();
+    if (error || !data) throw new Error(`Pengumuman belum tersimpan: ${error?.message || 'Data tidak ditemukan di server.'}`);
     setAnnouncements(current => [ann, ...current.filter(a => a.id !== ann.id)]);
   };
 
   const handleDeleteAnnouncement = async (id: string) => {
     if (confirm('Hapus pengumuman ini?')) {
-      const { error } = await supabase.from('announcements').delete().eq('id', id);
-      if (error) throw new Error(`Pengumuman belum dihapus: ${error.message}`);
+      const { data, error } = await supabase.from('announcements').delete().eq('id', id).select('id').maybeSingle();
+      if (error || !data) throw new Error(`Pengumuman belum dihapus: ${error?.message || 'Data tidak ditemukan di server.'}`);
       setAnnouncements(current => current.filter(a => a.id !== id));
     }
   };
@@ -367,7 +441,11 @@ export default function App() {
     setIsDriveModalOpen(true);
   };
 
-  const handleSaveDriveFolder = (folderData: DriveFolder) => {
+  const handleSaveDriveFolder = async (folderData: DriveFolder) => {
+    const { error } = await supabase.from('drive_folders').upsert({ id: folderData.id, title: folderData.title,
+      file_count: folderData.fileCount, url: folderData.url, color: folderData.color,
+      description: folderData.description, icon_name: folderData.iconName }, { onConflict: 'id' });
+    if (error) throw new Error(`Folder belum tersimpan: ${error.message}`);
     const exists = driveFolders.some((f) => f.id === folderData.id);
     let updated: DriveFolder[];
     if (exists) {
@@ -376,18 +454,27 @@ export default function App() {
       updated = [...driveFolders, folderData];
     }
     setDriveFolders(updated);
-    storage.setDriveFolders(updated);
+    storage.cacheDriveFolders(updated);
+    setAdminWriteError('');
   };
 
-  const handleDeleteDriveFolder = (id: string) => {
+  const handleDeleteDriveFolder = async (id: string) => {
+    const { data, error } = await supabase.from('drive_folders').delete().eq('id', id).select('id').maybeSingle();
+    if (error || !data) { setAdminWriteError(`Folder belum dihapus: ${error?.message || 'Data tidak ditemukan di server.'}`); return; }
     const updated = driveFolders.filter((f) => f.id !== id);
     setDriveFolders(updated);
-    storage.setDriveFolders(updated);
+    storage.cacheDriveFolders(updated);
+    setAdminWriteError('');
   };
 
-  const handleUpdateMeeting = (data: OnlineMeeting) => {
+  const handleUpdateMeeting = async (data: OnlineMeeting) => {
+    const { data: saved, error } = await supabase.from('online_meetings').update({
+      title: data.title, scheduled_time: data.scheduledTime, meet_url: data.meetUrl,
+      agenda_note: data.agendaNote, status: data.status
+    }).eq('id', data.id).select('id').maybeSingle();
+    if (error || !saved) throw new Error(error?.message || 'Rapat belum ditemukan di server.');
     setOnlineMeeting(data);
-    storage.setOnlineMeeting(data);
+    storage.cacheOnlineMeeting(data);
   };
 
   const handleSetUserSession = (session: UserSession) => {
@@ -465,11 +552,12 @@ export default function App() {
         onOpenAdminModal={() => setIsAdminModalOpen(true)}
         onOpenHelpModal={() => setIsHelpModalOpen(true)}
         onOpenLoginHistory={() => setIsLoginHistoryOpen(true)}
-        unreadCount={schedules.length}
+        unreadCount={schedules.filter(s => s.status !== 'Selesai' && s.date >= todayJakarta()).length}
       />
 
       {/* Main Page Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+        {adminWriteError && <div role="alert" className="portal-error mb-6 flex items-start justify-between gap-3"><span>{adminWriteError}</span><button type="button" className="font-black" aria-label="Tutup pesan kesalahan" onClick={() => setAdminWriteError('')}>×</button></div>}
         {activeTab === 'home' && (
           <Dashboard
             schedules={schedules}
@@ -579,7 +667,6 @@ export default function App() {
         onClose={() => setIsTeacherLoginOpen(false)}
         userSession={userSession}
         setUserSession={handleSetUserSession}
-        onOpenLoginHistory={() => setIsLoginHistoryOpen(true)}
         onRecordLoginHistory={handleRecordLoginHistory}
       />
 
@@ -594,11 +681,11 @@ export default function App() {
       />
 
       <LoginHistoryModal
-        isOpen={isLoginHistoryOpen}
+        isOpen={isLoginHistoryOpen && isAdmin}
         onClose={() => setIsLoginHistoryOpen(false)}
         loginHistory={loginHistory}
-        onClearHistory={handleClearLoginHistory}
-        isAdmin={isAdmin}
+        isLoading={loginHistoryLoading}
+        error={loginHistoryError}
       />
 
       <HelpModal
