@@ -10,6 +10,26 @@
 button, a, input, select, textarea { outline-offset: 4px; }
 .portal-dialog { overflow-y: auto; overscroll-behavior: contain; }
 body:has(dialog[open]) { overflow: hidden; }
+.joglo-hero { min-height: 460px; }
+.joglo-scene {
+  position: absolute; inset: -2%; z-index: -2;
+  background: linear-gradient(90deg, rgba(23, 16, 86, .73) 0%, rgba(30, 17, 97, .46) 45%, rgba(20, 12, 64, .08) 78%), url('/joglo-future.png') center 48% / cover no-repeat;
+  animation: joglo-breathe 24s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.joglo-glow { position: absolute; z-index: -1; width: 22rem; height: 22rem; border-radius: 50%; pointer-events: none; filter: blur(65px); opacity: .28; animation: joglo-drift 18s ease-in-out infinite alternate; }
+.joglo-glow-one { left: -9rem; bottom: -14rem; background: #31d8ff; }
+.joglo-glow-two { right: 10%; top: -14rem; background: #ffbf47; animation-delay: -9s; }
+@keyframes joglo-breathe { from { transform: scale(1.015) translate3d(-.3%, 0, 0); } to { transform: scale(1.08) translate3d(1%, -.6%, 0); } }
+@keyframes joglo-drift { from { transform: translate3d(0, 0, 0); opacity: .16; } to { transform: translate3d(3rem, 2rem, 0); opacity: .35; } }
+.kkg-feature-card { position: relative; isolation: isolate; overflow: hidden; }
+.kkg-feature-card::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: .14; background-image: radial-gradient(circle at 0 0, transparent 19px, #fff 20px, transparent 22px), radial-gradient(circle at 40px 40px, transparent 19px, #fff 20px, transparent 22px); background-size: 80px 80px; }
+@media (max-width: 640px) {
+  .joglo-hero { min-height: 490px; }
+  .joglo-scene { background-position: 66% center; }
+  .joglo-scene { background-image: linear-gradient(90deg, rgba(23, 16, 86, .82), rgba(23, 16, 86, .57)), url('/joglo-future.png'); }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .joglo-scene { transform: none !important; will-change: auto; }
 }

@@ -11,9 +11,12 @@ interface HeroBannerProps {
 
 export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveTab, cashBalance, onOpenHelpModal }) => {
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 border-4 border-black p-5 sm:p-8 shadow-[8px_8px_0_0_#000] mb-8 text-white">
+    <section className="joglo-hero relative isolate overflow-hidden rounded-3xl bg-indigo-950 border-4 border-black p-5 sm:p-8 lg:p-10 shadow-[8px_8px_0_0_#000] mb-8 text-white">
+      <div className="joglo-scene" aria-hidden="true" />
+      <div className="joglo-glow joglo-glow-one" aria-hidden="true" />
+      <div className="joglo-glow joglo-glow-two" aria-hidden="true" />
       {/* Decorative Floating Pop Elements */}
-      <div className="absolute top-3 right-4 bg-yellow-300 text-black border-2 border-black font-black text-xs px-3 py-1 rounded-full shadow-[2px_2px_0_0_#000] rotate-3 animate-bounce hidden sm:flex items-center gap-1">
+      <div className="absolute z-10 top-3 right-4 bg-yellow-300 text-black border-2 border-black font-black text-xs px-3 py-1 rounded-full shadow-[2px_2px_0_0_#000] rotate-3 hidden sm:flex items-center gap-1">
         <Sparkles className="w-3.5 h-3.5" />
         <span>Kecamatan Pagu</span>
       </div>
@@ -21,18 +24,18 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
       <div className="absolute -bottom-6 -right-6 w-32 h-32 sm:w-48 sm:h-48 bg-cyan-300/30 rounded-full blur-2xl pointer-events-none" />
 
       {/* Main Content */}
-      <div className="relative z-10 max-w-3xl">
+      <div className="relative z-10 max-w-xl lg:max-w-[53%]">
         <div className="inline-flex items-center gap-2 bg-yellow-300 text-black border-2 border-black font-black text-xs px-3 py-1.5 rounded-full shadow-[2px_2px_0_0_#000] mb-3">
           <Zap className="w-4 h-4 fill-black" />
-          <span>WELCOME TO KKG SIXVIBE!</span>
+          <span>BERBAGI • BERKOLABORASI • BERTUMBUH</span>
         </div>
 
-        <h1 className="text-3xl sm:text-5xl font-black text-black tracking-tight leading-none mb-2 drop-shadow-[2px_2px_0_#fff]">
+        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-none mb-3 drop-shadow-[4px_4px_0_#000]">
           KKG6UP! <span className="text-yellow-300">⚡</span>
         </h1>
 
-        <p className="text-sm sm:text-lg font-bold text-black/90 mb-6 max-w-xl leading-snug">
-          Tempat Guru Kelas 6 Kecamatan Pagu • <span className="underline decoration-yellow-300 decoration-4">CONNECT • SHARE • GROW.</span> All info in one vibe!
+        <p className="text-base sm:text-xl font-extrabold text-white mb-6 max-w-xl leading-snug drop-shadow-[1px_2px_2px_#171349]">
+          Ruang kolaborasi guru kelas 6 Kecamatan Pagu. <span className="text-yellow-200">Bersama, menginspirasi pembelajaran masa depan.</span>
         </p>
 
         {/* Hero Quick Buttons */}
@@ -42,7 +45,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
             className="px-5 py-3 rounded-2xl bg-yellow-300 hover:bg-yellow-400 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
           >
             <Calendar className="w-4 h-4 stroke-[3]" />
-            <span>📅 Cek Jadwal KKG</span>
+            <span>Lihat Agenda</span>
           </button>
 
           <button
@@ -50,7 +53,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
             className="px-5 py-3 rounded-2xl bg-cyan-300 hover:bg-cyan-400 text-black font-black text-sm border-3 border-black shadow-[4px_4px_0_0_#000] transition-all active:scale-95 flex items-center gap-2"
           >
             <HardDrive className="w-4 h-4 stroke-[3]" />
-            <span>📚 Buka SIXDRIVE</span>
+            <span>Cari Bahan Ajar</span>
           </button>
 
           <button
@@ -95,7 +98,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
           <div className="bg-white/95 text-black rounded-2xl border-3 border-black p-4 shadow-[4px_4px_0_0_#000] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-purple-500 border-2 border-black text-white flex items-center justify-center font-black shrink-0 shadow-[2px_2px_0_0_#000]">
-                <BellRing className="w-5 h-5 animate-spin" />
+                <BellRing className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
@@ -124,6 +127,6 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ nextSchedule, setActiveT
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 };

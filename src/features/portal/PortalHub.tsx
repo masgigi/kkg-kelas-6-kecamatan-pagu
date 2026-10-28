@@ -6,16 +6,16 @@ import { ContentSection } from './ContentSection';
 import { ContributionForm, ContributionReview } from './Contributions';
 
 export const featureLinks = [
-  { id: 'profile', title: 'Profil & Pengurus', note: 'Kenali KKG dan tim penggeraknya', emoji: '👥', color: 'bg-cyan-300' },
-  { id: 'program', title: 'Program & Agenda', note: 'Rencana kerja dan kegiatan bersama', emoji: '🎯', color: 'bg-pink-300' },
-  { id: 'update', title: 'Informasi KKG', note: 'Pengumuman dan kabar terbaru', emoji: '📢', color: 'bg-lime-300' },
-  { id: 'stories', title: 'Dokumentasi & Praktik Baik', note: 'Cerita kegiatan dan inspirasi mengajar', emoji: '📸', color: 'bg-orange-300' },
-  { id: 'drive', title: 'Perangkat & Sumber Belajar', note: 'Cari, buka, dan bagikan bahan ajar', emoji: '📚', color: 'bg-yellow-300' },
-  { id: 'services', title: 'Layanan Anggota', note: 'Arsip, tautan penting, dan usulan', emoji: '🗂️', color: 'bg-purple-300' }
+  { id: 'profile', title: 'Profil & Pengurus', note: 'Kenali KKG dan tim penggeraknya', emoji: '👥', color: 'bg-purple-500 text-white' },
+  { id: 'program', title: 'Program & Agenda', note: 'Rencana kerja dan kegiatan bersama', emoji: '🎯', color: 'bg-orange-500 text-white' },
+  { id: 'update', title: 'Informasi KKG', note: 'Pengumuman dan kabar terbaru', emoji: '📢', color: 'bg-cyan-300 text-black' },
+  { id: 'stories', title: 'Dokumentasi & Praktik Baik', note: 'Cerita kegiatan dan inspirasi mengajar', emoji: '📸', color: 'bg-pink-500 text-white' },
+  { id: 'drive', title: 'Perangkat & Sumber Belajar', note: 'Cari, buka, dan bagikan bahan ajar', emoji: '📚', color: 'bg-yellow-300 text-black' },
+  { id: 'services', title: 'Layanan Anggota', note: 'Arsip, tautan penting, dan usulan', emoji: '🗂️', color: 'bg-lime-300 text-black' }
 ];
 
 export function FeatureLinks({ onNavigate }: { onNavigate: (tab: string) => void }) {
-  return <section className="space-y-4" aria-label="Jelajahi KKG"><div><h2 className="font-black text-2xl">🌈 Ruang Kolaborasi KKG</h2><p className="text-sm font-bold text-gray-600 mt-1">Kenali komunitasnya, temukan ilmunya, bagikan inspirasinya.</p></div><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{featureLinks.map(link => <button key={link.id} onClick={() => onNavigate(link.id)} className={`${link.color} text-left p-5 rounded-2xl border-3 border-black shadow-[4px_4px_0_#000] transition-transform hover:-translate-y-1 active:translate-y-0`}><span aria-hidden="true" className="text-3xl">{link.emoji}</span><h3 className="font-black mt-3">{link.title}</h3><p className="font-semibold text-xs mt-1">{link.note}</p><ArrowRight className="mt-3" size={18} /></button>)}</div></section>;
+  return <section className="space-y-4" aria-label="Jelajahi KKG"><div><h2 className="font-black text-2xl">🌈 Ruang Kolaborasi KKG</h2><p className="text-sm font-bold text-gray-600 mt-1">Kenali komunitasnya, temukan ilmunya, bagikan inspirasinya.</p></div><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{featureLinks.map(link => <button key={link.id} onClick={() => onNavigate(link.id)} className={`kkg-feature-card ${link.color} text-left p-5 rounded-2xl border-3 border-black shadow-[4px_4px_0_#000] transition-transform hover:-translate-y-1 active:translate-y-0`}><span aria-hidden="true" className="text-3xl">{link.emoji}</span><h3 className="font-black mt-3">{link.title}</h3><p className="font-semibold text-xs mt-1">{link.note}</p><ArrowRight className="mt-3" size={18} /></button>)}</div></section>;
 }
 
 export function PortalHub({ view, items, isAdmin, loading, error, refresh, teachers, navigate }: {
