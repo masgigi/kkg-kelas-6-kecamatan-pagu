@@ -10,8 +10,10 @@ export function agendaTickerContent(schedules: ScheduleItem[], today = todayJaka
     message: 'Belum ada jadwal kegiatan mendatang. Agenda KKG akan diumumkan di sini. Buka Jadwal untuk melihat informasi kegiatan.'
   };
   const date = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${schedule.date}T00:00:00+07:00`));
-  const topics = schedule.agenda.map(item => item.trim()).filter(Boolean).slice(0, 2).join('; ');
-  const summary = `${schedule.title.trim()} • ${date} • ${schedule.time.trim() || 'Waktu menyusul'} • ${schedule.location.trim() || 'Lokasi menyusul'}${topics ? ` • Bahasan: ${topics}` : ''}`;
+  const topics = schedule.agenda.flatMap(item => item.split(/\r?\n/))
+    .map(item => item.trim().replace(/^(?:rincian\s+)?agenda\s*:\s*/i, '').replace(/^(?:\d+[.)]|[-•])\s*/, '').replace(/[.;]+$/, '').trim())
+    .filter(Boolean).slice(0, 2).join('; ');
+  const summary = `${date} • ${schedule.title.trim()} • ${schedule.time.trim() || 'Waktu menyusul'} • ${schedule.location.trim() || 'Lokasi menyusul'}${topics ? ` • Bahasan: ${topics}` : ''}`;
   return {
     label: upcoming ? (schedule.date === today ? 'Agenda Hari Ini' : 'Agenda Terdekat') : 'Agenda Terakhir',
     message: upcoming ? `${summary} • Lihat jadwal untuk rincian kegiatan.` : `${summary} • Jadwal berikutnya akan diumumkan di sini.`
