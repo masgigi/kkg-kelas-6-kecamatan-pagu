@@ -13,7 +13,7 @@ export function documentEmbed(value: string): string {
     const match = parsed.pathname.match(/^\/(document|spreadsheets|presentation)\/d\/([\w-]+)/);
     if (match) return `https://docs.google.com/${match[1]}/d/${match[2]}/${match[1] === 'presentation' ? 'embed' : 'preview'}`;
   }
-  if (/\.pdf$/i.test(parsed.pathname)) return url;
+  if (/\.pdf$/i.test(parsed.pathname)) return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
   if (/\.(docx?|xlsx?|pptx?)$/i.test(parsed.pathname)) return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   return '';
 }
