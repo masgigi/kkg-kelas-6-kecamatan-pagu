@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Save, Upload } from 'lucide-react';
-import { PortalContent, contentConfig, documentationMedia } from './model';
+import { PortalContent, contentConfig } from './model';
 import { saveContent, uploadPortalFile } from './api';
 import { PortalModal } from './PortalModal';
+import { MediaPreview } from './MediaPreview';
 
 export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalContent; onClose: () => void; onSaved: () => Promise<void> }) {
   const [item, setItem] = useState(initial);
@@ -41,7 +42,7 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
           <label className="portal-label">Keterangan kegiatan<textarea required maxLength={30000} rows={4} className="portal-input" placeholder="Ceritakan kegiatan secara singkat…" value={item.body} onChange={e => change('body', e.target.value)} /></label>
           <label className="portal-label">URL foto atau video<input required type="url" maxLength={2000} className="portal-input" placeholder="https://…" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} /></label>
           <p className="text-sm font-semibold text-gray-700">Gunakan tautan foto langsung, video YouTube, atau file Google Drive yang dapat dilihat pengunjung. Pastikan akses tautan sudah dibuka untuk umum.</p>
-          {documentationMedia(mediaUrl)?.type === 'image' && <img src={documentationMedia(mediaUrl)?.url} alt="Pratinjau foto kegiatan" className="w-full max-h-56 object-contain rounded-2xl border-2 border-black bg-white" />}
+          <MediaPreview url={mediaUrl} title={item.title || 'kegiatan'} />
         </> : <>
         <label className="portal-label">Ringkasan singkat<textarea maxLength={500} rows={2} className="portal-input" value={item.summary} onChange={e => change('summary', e.target.value)} /></label>
         <label className="portal-label">{config.bodyLabel}<textarea maxLength={30000} rows={5} className="portal-input" value={item.body} onChange={e => change('body', e.target.value)} /></label>

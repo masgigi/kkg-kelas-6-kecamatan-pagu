@@ -1,22 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowUpRight, Edit2, Plus, Search } from 'lucide-react';
-import { ContentKind, PortalContent, blankContent, contentConfig, documentationMedia, safeUrl } from './model';
+import { ContentKind, PortalContent, blankContent, contentConfig, safeUrl } from './model';
 import { ContentEditor } from './ContentEditor';
 import { PortalModal } from './PortalModal';
-
-function mediaFor(item: PortalContent) {
-  return documentationMedia(item.details.media_url || item.image_url || item.details.video || (item.details.photos || '').split('\n').find(Boolean) || item.link_url);
-}
+import { MediaPreview } from './MediaPreview';
 
 function DocumentationVisual({ item, compact = false }: { item: PortalContent; compact?: boolean }) {
-  const media = mediaFor(item);
-  if (!media) return null;
-  const className = compact ? 'w-full h-48 border-b-3 border-black object-cover bg-orange-50' : 'w-full max-h-[70vh] rounded-2xl border-2 border-black bg-orange-50';
-  if (media.type === 'image') return <img src={media.url} alt={`Dokumentasi ${item.title}`} loading="lazy" className={className} />;
-  if (compact) return <div className="h-48 border-b-3 border-black bg-gradient-to-br from-orange-200 via-pink-200 to-purple-200 flex items-center justify-center text-6xl" aria-label="Pratinjau video kegiatan">▶️</div>;
-  if (media.type === 'video') return <video controls preload="metadata" src={media.url} className={className}>Peramban tidak mendukung pemutaran video.</video>;
-  if (media.type === 'embed') return <iframe src={media.embedUrl} title={`Video atau foto ${item.title}`} loading="lazy" allow="fullscreen; encrypted-media; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className="w-full aspect-video rounded-2xl border-2 border-black bg-black" />;
-  return <a href={media.url} target="_blank" rel="noopener noreferrer" className="portal-button bg-orange-200">Buka foto atau video <ArrowUpRight size={16} /></a>;
+  const url = item.details.media_url || item.image_url || item.details.video || (item.details.photos || '').split('\n').find(Boolean) || item.link_url;
+  return <MediaPreview url={url} title={item.title} compact={compact} />;
 }
 
 function ContentDetail({ item, onClose }: { item: PortalContent; onClose: () => void }) {
