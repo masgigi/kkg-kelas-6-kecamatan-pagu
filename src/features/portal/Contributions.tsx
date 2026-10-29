@@ -40,18 +40,20 @@ export function ContributionForm({ kind, onClose }: { kind: Submission['kind']; 
   </PortalModal>;
 }
 
-export function ContributionReview({ onReviewed }: { onReviewed: () => Promise<void> }) {
+export function ContributionReview({ onReviewed, kindFilter }: { onReviewed: () => Promise<void>; kindFilter?: Submission['kind'] }) {
   const [items, setItems] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviewing, setReviewing] = useState<Submission | null>(null);
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
-    const { data, error } = await supabase.from('kkg_submissions').select('*').eq('status', 'pending').order('created_at').limit(100);
+    let query = supabase.from('kkg_submissions').select('*').eq('status', 'pending');
+    if (kindFilter) query = query.eq('kind', kindFilter);
+    const { data, error } = await query.order('created_at').limit(100);
     if (error) setError('Antrean kiriman belum berhasil dimuat.');
     else { setItems(data as Submission[]); setError(''); }
     setLoading(false);
-  }, []);
+  }, [kindFilter]);
   useEffect(() => { void load(); }, [load]);
   const review = async (action: 'publish' | 'review' | 'reject') => {
     if (!reviewing) return;

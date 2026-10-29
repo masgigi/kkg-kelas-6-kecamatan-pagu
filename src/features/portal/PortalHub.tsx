@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ArrowRight, Plus } from 'lucide-react';
 import type { TeacherItem } from '../../types';
-import { PortalContent, Submission } from './model';
+import { PortalContent, Submission, blankContent } from './model';
+import { ContentEditor } from './ContentEditor';
 import { ContentSection } from './ContentSection';
 import { ContributionForm, ContributionReview } from './Contributions';
 
@@ -38,6 +39,8 @@ export function PortalHub({ view, items, isAdmin, loading, error, refresh, teach
 }) {
   const [storyTab, setStoryTab] = useState<'documentation' | 'practice'>('documentation');
   const [contribution, setContribution] = useState<Submission['kind'] | null>(null);
+  const [addingResource, setAddingResource] = useState<PortalContent | null>(null);
+  const [resourceSaved, setResourceSaved] = useState(false);
   const link = featureLinks.find(f => f.id === (view === 'resources' ? 'drive' : view))!;
   const section = (kind: Parameters<typeof ContentSection>[0]['kind'], emptyText?: string) => <ContentSection key={kind} kind={kind} items={items} isAdmin={isAdmin} refresh={refresh} emptyText={emptyText} />;
   return <div className="space-y-7 pb-10">
@@ -48,7 +51,7 @@ export function PortalHub({ view, items, isAdmin, loading, error, refresh, teach
         {view === 'profile' && <button className="portal-button bg-cyan-300" onClick={() => navigate('crew')}>Lihat {teachers.length} guru anggota <ArrowRight size={16} /></button>}
         {view === 'program' && <><button className="portal-button bg-yellow-300" onClick={() => navigate('schedule')}>📅 Buka agenda & jadwal</button><a className="portal-button bg-white" href="/absensi" target="_blank" rel="noopener noreferrer">Isi presensi ↗</a></>}
         {view === 'stories' && <button className="portal-button bg-lime-300" onClick={() => setContribution('practice')}><Plus size={16} />Bagikan praktik baik</button>}
-        {view === 'resources' && <button className="portal-button bg-yellow-300" onClick={() => setContribution('resource')}><Plus size={16} />Bagikan sumber belajar</button>}
+        {view === 'resources' && <button className="portal-button bg-yellow-300" onClick={() => isAdmin ? setAddingResource({ ...blankContent('resource'), status: 'published' }) : setContribution('resource')}><Plus size={16} />{isAdmin ? 'Unggah / Tambah ke Katalog' : 'Bagikan sumber belajar'}</button>}
         {view === 'services' && <button className="portal-button bg-cyan-300" onClick={() => setContribution('suggestion')}>💬 Kirim usulan / masukan</button>}
       </div>
     </section>
@@ -59,9 +62,10 @@ export function PortalHub({ view, items, isAdmin, loading, error, refresh, teach
         ? 'Tambahkan program resmi beserta periode, target, penanggung jawab, dan status pelaksanaan.'
         : 'Program kerja resmi akan ditampilkan setelah diterbitkan pengurus. Agenda pertemuan dapat dilihat melalui tombol di atas.')}
       {view === 'stories' && <><div className="flex flex-wrap gap-3" aria-label="Kategori cerita"><button aria-pressed={storyTab === 'documentation'} className={`portal-button ${storyTab === 'documentation' ? 'bg-orange-300' : 'bg-white'}`} onClick={() => setStoryTab('documentation')}>📸 Dokumentasi kegiatan</button><button aria-pressed={storyTab === 'practice'} className={`portal-button ${storyTab === 'practice' ? 'bg-lime-300' : 'bg-white'}`} onClick={() => setStoryTab('practice')}>💡 Praktik baik guru</button></div>{section(storyTab)}</>}
-      {view === 'resources' && section('resource')}
+      {view === 'resources' && <>{resourceSaved && <p role="status" className="rounded-xl border-2 border-black bg-lime-100 p-4 font-bold">Sumber belajar berhasil disimpan. Bahan berstatus Terbit dapat dilihat pengunjung di katalog.</p>}{section('resource')}{isAdmin && <ContributionReview kindFilter="resource" onReviewed={refresh} />}</>}
       {view === 'services' && <><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[{ id: 'cash', label: '💸 Kas KKG', color: 'bg-emerald-300' }, { id: 'meeting', label: '🎥 Rapat Online', color: 'bg-orange-300' }, { id: 'crew', label: '👩‍🏫 Data Guru', color: 'bg-cyan-300' }, { id: 'schedule', label: '📅 Agenda', color: 'bg-pink-300' }].map(item => <button key={item.id} className={`portal-button ${item.color}`} onClick={() => navigate(item.id)}>{item.label}</button>)}</div>{section('service')}{isAdmin && <ContributionReview onReviewed={refresh} />}</>}
     </>}
     {contribution && <ContributionForm kind={contribution} onClose={() => setContribution(null)} />}
+    {addingResource && isAdmin && <ContentEditor initial={addingResource} onClose={() => setAddingResource(null)} onSaved={async () => { await refresh(); setResourceSaved(true); }} />}
   </div>;
 }

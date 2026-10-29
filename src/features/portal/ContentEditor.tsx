@@ -10,6 +10,7 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
   const [item, setItem] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [uploadReady, setUploadReady] = useState(false);
   const [tagsInput, setTagsInput] = useState(initial.tags.join(', '));
   const [mediaUrl, setMediaUrl] = useState(initial.details.media_url || initial.image_url || initial.details.video || (initial.details.photos || '').split('\n').find(Boolean) || initial.link_url);
   const config = getContentConfig(item);
@@ -22,6 +23,7 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
       if (target === 'image_url' && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Pilih foto JPG, PNG, atau WebP.');
       const url = await uploadPortalFile(file);
       change(target, url);
+      if (target === 'link_url') setUploadReady(true);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   };
@@ -64,6 +66,7 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
         <label className="portal-label">Penulis / penyusun<input maxLength={200} className="portal-input" value={item.author_name} onChange={e => change('author_name', e.target.value)} /></label>
         <label className="portal-label">Tautan berkas / informasi<input type="url" maxLength={2000} className="portal-input" placeholder="https://…" value={item.link_url} onChange={e => change('link_url', e.target.value)} /></label>
         <label className="portal-label"><span className="flex items-center gap-2"><Upload size={16} /> Atau unggah berkas (maksimal 20 MB)</span><input type="file" className="portal-input" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.jpg,.jpeg,.png,.webp,.mp4" onChange={e => void upload(e.target.files?.[0], 'link_url')} /></label>
+        {uploadReady && <p role="status" className="rounded-xl bg-lime-100 p-3 text-sm font-bold">Berkas siap. {item.status === 'published' ? 'Klik Simpan & Terbitkan agar muncul di katalog.' : 'Klik Simpan untuk menyimpan konten; pilih status Terbit agar terlihat oleh pengunjung.'}</p>}
         <label className="portal-label">URL foto sampul / pengurus<input type="url" maxLength={2000} className="portal-input" placeholder="https://…" value={item.image_url} onChange={e => change('image_url', e.target.value)} /></label>
         <label className="portal-label">Atau unggah foto<input type="file" className="portal-input" accept="image/jpeg,image/png,image/webp" onChange={e => void upload(e.target.files?.[0], 'image_url')} /></label>
         <p className="text-xs font-semibold text-gray-600">Berkas unggahan memakai penyimpanan publik KKG. Simpan bahan yang memang boleh dibagikan.</p>
@@ -77,7 +80,7 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
       {error && <p role="alert" className="portal-error">{error}</p>}
       <div className="flex flex-wrap justify-end gap-3 border-t-2 border-black pt-4">
         <button type="button" disabled={busy} onClick={onClose} className="portal-button bg-gray-100">Batal</button>
-        <button type="submit" disabled={busy} className="portal-button bg-purple-600 text-white"><Save size={17} />{busy ? 'Menyimpan…' : 'Simpan Konten'}</button>
+        <button type="submit" disabled={busy} className="portal-button bg-purple-600 text-white"><Save size={17} />{busy ? 'Menyimpan…' : item.status === 'published' ? 'Simpan & Terbitkan' : item.status === 'draft' ? 'Simpan Draf' : 'Simpan Arsip'}</button>
       </div>
     </form>
   </PortalModal>;

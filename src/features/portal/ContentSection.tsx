@@ -5,6 +5,7 @@ import { ContentEditor } from './ContentEditor';
 import { PortalModal } from './PortalModal';
 import { MediaPreview } from './MediaPreview';
 import { DocumentPreview } from './DocumentPreview';
+import { ResourcePreview } from './ResourcePreview';
 
 function DocumentationVisual({ item, compact = false }: { item: PortalContent; compact?: boolean }) {
   const url = item.details.media_url || item.image_url || item.details.video || (item.details.photos || '').split('\n').find(Boolean) || item.link_url;
@@ -16,6 +17,7 @@ function ContentDetail({ item, onClose }: { item: PortalContent; onClose: () => 
   const photos = (item.details.photos || '').split('\n').map(safeUrl).filter(Boolean).slice(0, 30);
   return <PortalModal title={item.title} onClose={onClose}>
     <article className="space-y-5">
+      {item.kind === 'resource' && <ResourcePreview url={item.link_url} title={item.title} />}
       {item.kind === 'service' && item.link_url && <DocumentPreview url={item.link_url} title={item.title} />}
       {item.kind === 'documentation' ? <DocumentationVisual item={item} /> : safeUrl(item.image_url) && <img src={safeUrl(item.image_url)} alt={item.title} className="w-full max-h-80 object-contain rounded-2xl border-2 border-black bg-gray-100" />}
       {item.kind !== 'documentation' && item.summary && <p className="font-bold text-purple-900">{item.summary}</p>}
@@ -42,6 +44,7 @@ export function ContentSection({ kind, items, isAdmin, refresh, emptyText, docum
   const filterFields = config.fields.filter(f => ['category', 'subject', 'semester', 'period', 'progress', 'team'].includes(f.key) && !(documentCategory && f.key === 'category'));
   const createItem = () => {
     const item = blankContent(kind);
+    if (kind === 'resource') item.status = 'published';
     if (documentCategory) item.details = { category: documentCategory };
     else if (kind === 'committee') item.details = contentVariant === 'team'
       ? { record_type: 'team', position: 'Tupoksi Tim', term: '2026/2027' }
@@ -69,6 +72,7 @@ export function ContentSection({ kind, items, isAdmin, refresh, emptyText, docum
       <p className="text-sm font-semibold mt-2">{records.length ? 'Coba kata kunci atau filter lain.' : emptyText || (isAdmin ? 'Gunakan tombol Tambah untuk menyiapkan konten pertama.' : 'Pengurus akan memperbarui informasi di sini.')}</p>
     </div> : <div className={`grid gap-5 ${kind === 'profile' ? '' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
       {filtered.slice(0, limit).map(item => <article key={item.id} className="overflow-hidden bg-white rounded-3xl border-3 border-black shadow-[5px_5px_0_#000] flex flex-col">
+        {kind === 'resource' && <ResourcePreview url={item.link_url} title={item.title} compact />}
         {documentCategory && safeUrl(item.link_url) && <DocumentPreview url={item.link_url} title={item.title} compact />}
         {kind === 'documentation' ? <DocumentationVisual item={item} compact /> : safeUrl(item.image_url) && <img src={safeUrl(item.image_url)} alt={item.title} loading="lazy" className={`w-full h-48 border-b-3 border-black ${kind === 'committee' ? 'object-contain bg-cyan-50' : 'object-cover'}`} />}
         <div className={`${config.color} border-b-2 border-black px-4 py-2 flex flex-wrap gap-2 justify-between text-xs font-black`}><span>{config.emoji} {item.details.category || item.details.position || item.details.progress || config.label}</span>{isAdmin && <span>{({ published: 'Terbit', draft: 'Draf', archived: 'Arsip' })[item.status]}</span>}</div>
