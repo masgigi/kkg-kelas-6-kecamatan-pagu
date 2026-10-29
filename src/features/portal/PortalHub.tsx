@@ -11,7 +11,8 @@ export const featureLinks = [
   { id: 'update', title: 'Informasi KKG', note: 'Pengumuman dan kabar terbaru', emoji: '📢', color: 'bg-cyan-300 text-black' },
   { id: 'stories', title: 'Dokumentasi & Praktik Baik', note: 'Cerita kegiatan dan inspirasi mengajar', emoji: '📸', color: 'bg-pink-500 text-white' },
   { id: 'drive', title: 'Perangkat & Sumber Belajar', note: 'Cari, buka, dan bagikan bahan ajar', emoji: '📚', color: 'bg-yellow-300 text-black' },
-  { id: 'services', title: 'Layanan Anggota', note: 'Arsip, tautan penting, dan usulan', emoji: '🗂️', color: 'bg-lime-300 text-black' }
+  { id: 'services', title: 'Layanan Anggota', note: 'Arsip, tautan penting, dan usulan', emoji: '🗂️', color: 'bg-lime-300 text-black' },
+  { id: 'records', title: 'Rekap & Arsip', note: 'Daftar hadir, undangan, dan notulen rapat', emoji: '📋', color: 'bg-cyan-200 text-black' }
 ];
 
 export function FeatureLinks({ onNavigate }: { onNavigate: (tab: string) => void }) {

@@ -4,6 +4,7 @@ import { ContentKind, PortalContent, blankContent, contentConfig, safeUrl } from
 import { ContentEditor } from './ContentEditor';
 import { PortalModal } from './PortalModal';
 import { MediaPreview } from './MediaPreview';
+import { DocumentPreview } from './DocumentPreview';
 
 function DocumentationVisual({ item, compact = false }: { item: PortalContent; compact?: boolean }) {
   const url = item.details.media_url || item.image_url || item.details.video || (item.details.photos || '').split('\n').find(Boolean) || item.link_url;
@@ -15,6 +16,7 @@ function ContentDetail({ item, onClose }: { item: PortalContent; onClose: () => 
   const photos = (item.details.photos || '').split('\n').map(safeUrl).filter(Boolean).slice(0, 30);
   return <PortalModal title={item.title} onClose={onClose}>
     <article className="space-y-5">
+      {item.kind === 'service' && item.link_url && <DocumentPreview url={item.link_url} title={item.title} />}
       {item.kind === 'documentation' ? <DocumentationVisual item={item} /> : safeUrl(item.image_url) && <img src={safeUrl(item.image_url)} alt={item.title} className="w-full max-h-80 object-contain rounded-2xl border-2 border-black bg-gray-100" />}
       {item.kind !== 'documentation' && item.summary && <p className="font-bold text-purple-900">{item.summary}</p>}
       {item.author_name && <p className="text-sm font-semibold">Oleh {item.author_name}</p>}
@@ -27,16 +29,16 @@ function ContentDetail({ item, onClose }: { item: PortalContent; onClose: () => 
   </PortalModal>;
 }
 
-export function ContentSection({ kind, items, isAdmin, refresh, emptyText }: { kind: ContentKind; items: PortalContent[]; isAdmin: boolean; refresh: () => Promise<void>; emptyText?: string }) {
+export function ContentSection({ kind, items, isAdmin, refresh, emptyText, documentCategory }: { kind: ContentKind; items: PortalContent[]; isAdmin: boolean; refresh: () => Promise<void>; emptyText?: string; documentCategory?: string }) {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState('all');
   const [limit, setLimit] = useState(12);
   const [editing, setEditing] = useState<PortalContent | null>(null);
   const [detail, setDetail] = useState<PortalContent | null>(null);
-  const config = contentConfig[kind];
+  const config = documentCategory ? { ...contentConfig[kind], label: documentCategory } : contentConfig[kind];
   const records = items.filter(i => i.kind === kind && (isAdmin || i.status === 'published'));
-  const filterFields = config.fields.filter(f => ['category', 'subject', 'semester', 'period', 'progress'].includes(f.key));
+  const filterFields = config.fields.filter(f => ['category', 'subject', 'semester', 'period', 'progress'].includes(f.key) && !(documentCategory && f.key === 'category'));
   const filtered = useMemo(() => records.filter(item =>
     (visibility === 'all' || item.status === visibility) &&
     Object.entries(filters).every(([key, value]) => !value || item.details[key] === value) &&
@@ -45,7 +47,7 @@ export function ContentSection({ kind, items, isAdmin, refresh, emptyText }: { k
   return <section className="space-y-4" aria-label={config.label}>
     <div className="flex flex-wrap justify-between items-center gap-3">
       <h2 className="text-xl sm:text-2xl font-black">{config.emoji} {config.label}</h2>
-      {isAdmin && <button className="portal-button bg-yellow-300" onClick={() => setEditing(blankContent(kind))}><Plus size={17} />Tambah {config.label}</button>}
+      {isAdmin && <button className="portal-button bg-yellow-300" onClick={() => setEditing({ ...blankContent(kind), details: documentCategory ? { category: documentCategory } : {} })}><Plus size={17} />Tambah {config.label}</button>}
     </div>
     {kind !== 'profile' && <div className="flex flex-wrap gap-3">
       <label className="relative flex-1 min-w-44"><span className="sr-only">Cari {config.label}</span><Search size={18} className="absolute left-3 top-3.5" /><input className="portal-input !pl-10" placeholder={`Cari ${config.label.toLowerCase()}…`} value={query} onChange={e => { setQuery(e.target.value); setLimit(12); }} /></label>
@@ -58,6 +60,7 @@ export function ContentSection({ kind, items, isAdmin, refresh, emptyText }: { k
       <p className="text-sm font-semibold mt-2">{records.length ? 'Coba kata kunci atau filter lain.' : emptyText || (isAdmin ? 'Gunakan tombol Tambah untuk menyiapkan konten pertama.' : 'Pengurus akan memperbarui informasi di sini.')}</p>
     </div> : <div className={`grid gap-5 ${kind === 'profile' ? '' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
       {filtered.slice(0, limit).map(item => <article key={item.id} className="overflow-hidden bg-white rounded-3xl border-3 border-black shadow-[5px_5px_0_#000] flex flex-col">
+        {documentCategory && safeUrl(item.link_url) && <DocumentPreview url={item.link_url} title={item.title} compact />}
         {kind === 'documentation' ? <DocumentationVisual item={item} compact /> : safeUrl(item.image_url) && <img src={safeUrl(item.image_url)} alt={item.title} loading="lazy" className={`w-full h-48 border-b-3 border-black ${kind === 'committee' ? 'object-contain bg-cyan-50' : 'object-cover'}`} />}
         <div className={`${config.color} border-b-2 border-black px-4 py-2 flex flex-wrap gap-2 justify-between text-xs font-black`}><span>{config.emoji} {item.details.category || item.details.position || item.details.progress || config.label}</span>{isAdmin && <span>{({ published: 'Terbit', draft: 'Draf', archived: 'Arsip' })[item.status]}</span>}</div>
         <div className="p-5 flex-1 flex flex-col gap-3">

@@ -28,7 +28,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'update', label: '📢 Informasi', icon: MessageSquare },
     { id: 'stories', label: '📸 Dokumentasi & Praktik', icon: Sparkles },
     { id: 'drive', label: '📚 Sumber Belajar', icon: HardDrive },
-    { id: 'services', label: '🗂️ Layanan', icon: HelpCircle }
+    { id: 'services', label: '🗂️ Layanan', icon: HelpCircle },
+    { id: 'records', label: '📋 Rekap & Arsip', icon: CheckCircle2 }
   ];
 
   return (

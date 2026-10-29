@@ -22,6 +22,7 @@ import {
 import { supabase } from './lib/supabase';
 import { usePortalContent, saveContent } from './features/portal/api';
 import { PortalHub } from './features/portal/PortalHub';
+import { RecordsHub } from './features/portal/RecordsHub';
 import { blankContent, todayJakarta, upcomingSchedule } from './features/portal/model';
 
 import { Navbar } from './components/Navbar';
@@ -43,7 +44,7 @@ import { DriveModal } from './components/DriveModal';
 import { LoginHistoryModal } from './components/LoginHistoryModal';
 
 export default function App() {
-  const validTabs = ['home', 'profile', 'program', 'stories', 'services', 'schedule', 'drive', 'cash', 'crew', 'meeting', 'update', 'attendance'];
+  const validTabs = ['home', 'profile', 'program', 'stories', 'services', 'records', 'schedule', 'drive', 'cash', 'crew', 'meeting', 'update', 'attendance'];
   const [activeTab, setActiveTabState] = useState(() => validTabs.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');
   const [resourceMode, setResourceMode] = useState<'catalog' | 'folders'>('catalog');
   const setActiveTab = (tab: string) => {
@@ -574,6 +575,7 @@ export default function App() {
         {activeTab === 'program' && <PortalHub view="program" {...portalProps} />}
         {activeTab === 'stories' && <PortalHub view="stories" {...portalProps} />}
         {activeTab === 'services' && <PortalHub view="services" {...portalProps} />}
+        {activeTab === 'records' && <RecordsHub {...portalProps} />}
 
         {activeTab === 'attendance' && !isAdmin && <section className="bg-yellow-200 border-4 border-black rounded-3xl p-7 mb-10 space-y-4"><h1 className="text-2xl font-black">✅ Presensi Kegiatan KKG</h1><p className="font-semibold">Isi kehadiran melalui formulir presensi. Rekap dikelola oleh pengurus.</p><a href="/absensi" className="portal-button bg-purple-600 text-white">Buka formulir presensi →</a></section>}
 

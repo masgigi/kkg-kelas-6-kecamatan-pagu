@@ -57,7 +57,7 @@ export const contentConfig: Record<ContentKind, { label: string; emoji: string; 
     { key: 'semester', label: 'Semester', options: ['1', '2', '1 & 2'] }, { key: 'school', label: 'Sekolah / penyusun' }
   ] },
   service: { label: 'Layanan & Arsip', emoji: '🗂️', color: 'bg-emerald-200', titleLabel: 'Judul layanan / arsip', bodyLabel: 'Keterangan', fields: [
-    { key: 'category', label: 'Kategori', options: ['Notulen', 'Surat', 'Tautan Penting', 'Panduan', 'Lainnya'] }, { key: 'date', label: 'Tanggal dokumen', type: 'date' }
+    { key: 'category', label: 'Kategori', options: ['Daftar Hadir', 'Undangan', 'Notulen', 'Surat', 'Tautan Penting', 'Panduan', 'Lainnya'] }, { key: 'date', label: 'Tanggal dokumen', type: 'date' }
   ] }
 };
 
@@ -128,6 +128,7 @@ export function validateContent(item: PortalContent): string {
     if (url?.trim() && !safeUrl(url)) return 'Tautan harus berupa alamat http:// atau https:// yang valid.';
   }
   if (item.kind === 'resource' && !safeUrl(item.link_url)) return 'Sumber belajar memerlukan tautan berkas atau unggahan.';
+  if (item.kind === 'service' && ['Daftar Hadir', 'Undangan', 'Notulen'].includes(item.details.category) && !safeUrl(item.link_url)) return 'URL dokumen wajib diisi.';
   if (item.kind === 'committee' && !item.details.position?.trim()) return 'Jabatan pengurus wajib diisi.';
   if (item.kind === 'documentation' && !item.body.trim()) return 'Keterangan kegiatan wajib diisi.';
   if (item.kind === 'documentation' && !documentationMedia(item.details.media_url || item.image_url || item.details.video || item.link_url)) return 'Masukkan URL foto atau video yang valid.';

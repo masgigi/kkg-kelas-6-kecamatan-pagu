@@ -4,6 +4,7 @@ import { PortalContent, contentConfig } from './model';
 import { saveContent, uploadPortalFile } from './api';
 import { PortalModal } from './PortalModal';
 import { MediaPreview } from './MediaPreview';
+import { DocumentPreview } from './DocumentPreview';
 
 export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalContent; onClose: () => void; onSaved: () => Promise<void> }) {
   const [item, setItem] = useState(initial);
@@ -12,6 +13,7 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
   const [tagsInput, setTagsInput] = useState(initial.tags.join(', '));
   const [mediaUrl, setMediaUrl] = useState(initial.details.media_url || initial.image_url || initial.details.video || (initial.details.photos || '').split('\n').find(Boolean) || initial.link_url);
   const config = contentConfig[item.kind];
+  const isDocument = item.kind === 'service' && ['Daftar Hadir', 'Undangan', 'Notulen'].includes(item.details.category);
   const change = (key: keyof PortalContent, value: unknown) => setItem(prev => ({ ...prev, [key]: value }));
   const upload = async (file: File | undefined, target: 'image_url' | 'link_url') => {
     if (!file) return;
@@ -28,17 +30,23 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
     try {
       const values = item.kind === 'documentation'
         ? { ...item, details: { ...item.details, media_url: mediaUrl.trim() }, summary: item.body.trim().slice(0, 500) }
-        : { ...item, tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean).slice(0, 20) };
+        : isDocument ? { ...item, summary: item.body.trim().slice(0, 500) } : { ...item, tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean).slice(0, 20) };
       await saveContent(values); await onSaved(); onClose();
     }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   };
-  return <PortalModal title={`${initial.updated_at ? 'Edit' : 'Tambah'} ${config.label}`} onClose={onClose} busy={busy}>
+  return <PortalModal title={`${initial.updated_at ? 'Edit' : 'Tambah'} ${isDocument ? item.details.category : config.label}`} onClose={onClose} busy={busy}>
     <form onSubmit={submit} className="space-y-4">
       <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
-        <label className="portal-label">{item.kind === 'documentation' ? 'Judul kegiatan' : config.titleLabel}<input required maxLength={200} className="portal-input" value={item.title} onChange={e => change('title', e.target.value)} /></label>
-        {item.kind === 'documentation' ? <>
+        <label className="portal-label">{isDocument ? 'Judul kegiatan / dokumen' : item.kind === 'documentation' ? 'Judul kegiatan' : config.titleLabel}<input required maxLength={200} className="portal-input" value={item.title} onChange={e => change('title', e.target.value)} /></label>
+        {isDocument ? <>
+          <label className="portal-label">Tanggal kegiatan<input type="date" className="portal-input" value={item.details.date || ''} onChange={e => change('details', { ...item.details, date: e.target.value })} /></label>
+          <label className="portal-label">Keterangan kegiatan<textarea rows={3} maxLength={30000} className="portal-input" value={item.body} onChange={e => change('body', e.target.value)} /></label>
+          <label className="portal-label">URL dokumen {item.details.category.toLowerCase()}<input required type="url" maxLength={2000} placeholder="https://drive.google.com/…" className="portal-input" value={item.link_url} onChange={e => change('link_url', e.target.value)} /></label>
+          <p className="text-sm font-semibold text-gray-600">Gunakan tautan PDF, Google Drive, Google Docs, atau dokumen Office yang dapat dilihat pengunjung. Pilih Draf untuk menyimpan persiapan dan Terbit untuk menampilkannya di web.</p>
+          <DocumentPreview url={item.link_url} title={item.title} compact />
+        </> : item.kind === 'documentation' ? <>
           <label className="portal-label">Keterangan kegiatan<textarea required maxLength={30000} rows={4} className="portal-input" placeholder="Ceritakan kegiatan secara singkat…" value={item.body} onChange={e => change('body', e.target.value)} /></label>
           <label className="portal-label">URL foto atau video<input required type="url" maxLength={2000} className="portal-input" placeholder="https://…" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} /></label>
           <p className="text-sm font-semibold text-gray-700">Tempel tautan foto, YouTube, Google Drive, Google Foto (Bagikan → Buat link), atau postingan/Reel Instagram publik. Pastikan tautan dapat dilihat pengunjung tanpa meminta izin.</p>
