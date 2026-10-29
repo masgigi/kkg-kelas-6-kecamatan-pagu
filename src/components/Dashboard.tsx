@@ -171,7 +171,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             <div className="flex flex-col gap-3 justify-center h-full bg-purple-100 p-4 rounded-2xl border-2 border-black text-center">
               <p className="text-xs font-black text-purple-900">
-                Siapkan administrasi & laptop Anda!
+                Lihat agenda, sasaran, dan fasilitator kegiatan.
               </p>
               <button
                 onClick={() => setActiveTab('schedule')}
@@ -180,13 +180,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <span>LIHAT DETAIL & LOKASI</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => setActiveTab('meeting')}
+              {safeUrl(nextSchedule.googleMeetUrl) && <a
+                href={safeUrl(nextSchedule.googleMeetUrl)} target="_blank" rel="noopener noreferrer"
                 className="w-full py-2 bg-pink-400 hover:bg-pink-500 text-black font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] transition-transform active:scale-95 flex items-center justify-center gap-1.5"
               >
                 <Video className="w-4 h-4" />
                 <span>Link Rapat Online</span>
-              </button>
+              </a>}
             </div>
           </div>
         </div>
