@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Save, Upload } from 'lucide-react';
-import { PortalContent, contentConfig } from './model';
+import { PortalContent, contentConfig, documentationMedia } from './model';
 import { saveContent, uploadPortalFile } from './api';
 import { PortalModal } from './PortalModal';
 
@@ -9,6 +9,7 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [tagsInput, setTagsInput] = useState(initial.tags.join(', '));
+  const [mediaUrl, setMediaUrl] = useState(initial.details.media_url || initial.image_url || initial.details.video || (initial.details.photos || '').split('\n').find(Boolean) || initial.link_url);
   const config = contentConfig[item.kind];
   const change = (key: keyof PortalContent, value: unknown) => setItem(prev => ({ ...prev, [key]: value }));
   const upload = async (file: File | undefined, target: 'image_url' | 'link_url') => {
@@ -23,14 +24,25 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
   };
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setError('');
-    try { await saveContent({ ...item, tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean).slice(0, 20) }); await onSaved(); onClose(); }
+    try {
+      const values = item.kind === 'documentation'
+        ? { ...item, details: { ...item.details, media_url: mediaUrl.trim() }, summary: item.body.trim().slice(0, 500) }
+        : { ...item, tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean).slice(0, 20) };
+      await saveContent(values); await onSaved(); onClose();
+    }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   };
   return <PortalModal title={`${initial.updated_at ? 'Edit' : 'Tambah'} ${config.label}`} onClose={onClose} busy={busy}>
     <form onSubmit={submit} className="space-y-4">
       <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
-        <label className="portal-label">{config.titleLabel}<input required maxLength={200} className="portal-input" value={item.title} onChange={e => change('title', e.target.value)} /></label>
+        <label className="portal-label">{item.kind === 'documentation' ? 'Judul kegiatan' : config.titleLabel}<input required maxLength={200} className="portal-input" value={item.title} onChange={e => change('title', e.target.value)} /></label>
+        {item.kind === 'documentation' ? <>
+          <label className="portal-label">Keterangan kegiatan<textarea required maxLength={30000} rows={4} className="portal-input" placeholder="Ceritakan kegiatan secara singkat…" value={item.body} onChange={e => change('body', e.target.value)} /></label>
+          <label className="portal-label">URL foto atau video<input required type="url" maxLength={2000} className="portal-input" placeholder="https://…" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} /></label>
+          <p className="text-sm font-semibold text-gray-700">Gunakan tautan foto langsung, video YouTube, atau file Google Drive yang dapat dilihat pengunjung. Pastikan akses tautan sudah dibuka untuk umum.</p>
+          {documentationMedia(mediaUrl)?.type === 'image' && <img src={documentationMedia(mediaUrl)?.url} alt="Pratinjau foto kegiatan" className="w-full max-h-56 object-contain rounded-2xl border-2 border-black bg-white" />}
+        </> : <>
         <label className="portal-label">Ringkasan singkat<textarea maxLength={500} rows={2} className="portal-input" value={item.summary} onChange={e => change('summary', e.target.value)} /></label>
         <label className="portal-label">{config.bodyLabel}<textarea maxLength={30000} rows={5} className="portal-input" value={item.body} onChange={e => change('body', e.target.value)} /></label>
         <div className="grid sm:grid-cols-2 gap-4">
@@ -47,6 +59,7 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
         <label className="portal-label">Atau unggah foto<input type="file" className="portal-input" accept="image/jpeg,image/png,image/webp" onChange={e => void upload(e.target.files?.[0], 'image_url')} /></label>
         <p className="text-xs font-semibold text-gray-600">Berkas unggahan memakai penyimpanan publik KKG. Simpan bahan yang memang boleh dibagikan.</p>
         <label className="portal-label">Tag (pisahkan dengan koma)<input maxLength={500} className="portal-input" value={tagsInput} onChange={e => setTagsInput(e.target.value)} /></label>
+        </>}
         <div className="grid grid-cols-2 gap-4">
           <label className="portal-label">Status<select className="portal-input" value={item.status} onChange={e => change('status', e.target.value)}><option value="draft">Draf</option><option value="published">Terbit</option><option value="archived">Arsip</option></select></label>
           <label className="portal-label">Urutan tampil<input type="number" min={0} max={9999} className="portal-input" value={item.sort_order} onChange={e => change('sort_order', Number(e.target.value))} /></label>

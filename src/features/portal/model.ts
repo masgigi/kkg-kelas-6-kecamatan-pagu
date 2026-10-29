@@ -81,6 +81,27 @@ export function safeUrl(value?: string): string {
   } catch { return ''; }
 }
 
+export function documentationMedia(value?: string): { url: string; type: 'image' | 'video' | 'embed' | 'link'; embedUrl?: string } | null {
+  const url = safeUrl(value);
+  if (!url) return null;
+  const parsed = new URL(url);
+  const host = parsed.hostname.toLowerCase();
+  const path = parsed.pathname;
+  let videoId = '';
+  if (host === 'youtu.be') videoId = path.slice(1).split('/')[0];
+  if (host === 'youtube.com' || host === 'www.youtube.com' || host === 'm.youtube.com') {
+    videoId = parsed.searchParams.get('v') || path.match(/^\/(?:shorts|live|embed)\/([^/]+)/)?.[1] || '';
+  }
+  if (/^[a-zA-Z0-9_-]{11}$/.test(videoId)) return { url, type: 'embed', embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}` };
+  if (host === 'drive.google.com') {
+    const driveId = path.match(/^\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || parsed.searchParams.get('id') || '';
+    if (/^[a-zA-Z0-9_-]{10,}$/.test(driveId)) return { url, type: 'embed', embedUrl: `https://drive.google.com/file/d/${driveId}/preview` };
+  }
+  if (/\.(?:jpe?g|png|webp|gif|avif)$/i.test(path)) return { url, type: 'image' };
+  if (/\.(?:mp4|webm|ogg)$/i.test(path)) return { url, type: 'video' };
+  return { url, type: 'link' };
+}
+
 export function todayJakarta(date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 }
@@ -96,10 +117,12 @@ export function blankContent(kind: ContentKind): PortalContent {
 export function validateContent(item: PortalContent): string {
   if (!item.title.trim()) return 'Judul wajib diisi.';
   if (item.title.length > 200 || item.body.length > 30000) return 'Judul maksimal 200 karakter dan isi maksimal 30.000 karakter.';
-  for (const url of [item.link_url, item.image_url, item.details.video, ...(item.details.photos || '').split('\n')]) {
+  for (const url of [item.link_url, item.image_url, item.details.video, item.details.media_url, ...(item.details.photos || '').split('\n')]) {
     if (url?.trim() && !safeUrl(url)) return 'Tautan harus berupa alamat http:// atau https:// yang valid.';
   }
   if (item.kind === 'resource' && !safeUrl(item.link_url)) return 'Sumber belajar memerlukan tautan berkas atau unggahan.';
   if (item.kind === 'committee' && !item.details.position?.trim()) return 'Jabatan pengurus wajib diisi.';
+  if (item.kind === 'documentation' && !item.body.trim()) return 'Keterangan kegiatan wajib diisi.';
+  if (item.kind === 'documentation' && !documentationMedia(item.details.media_url || item.image_url || item.details.video || item.link_url)) return 'Masukkan URL foto atau video yang valid.';
   return '';
 }
