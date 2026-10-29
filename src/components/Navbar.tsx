@@ -1,6 +1,7 @@
 import React from 'react';
-import { Sparkles, Shield, User, Bell, Video, Zap, Calendar, HardDrive, DollarSign, Users, MessageSquare, HelpCircle, History, CheckCircle2 } from 'lucide-react';
-import { UserSession } from '../types';
+import { Sparkles, Shield, Bell, Calendar, HardDrive, Users, MessageSquare, HelpCircle, History, CheckCircle2 } from 'lucide-react';
+import { ScheduleItem, UserSession } from '../types';
+import { AgendaTicker } from './AgendaTicker';
 
 interface NavbarProps {
   activeTab: string;
@@ -10,6 +11,7 @@ interface NavbarProps {
   onOpenHelpModal: () => void;
   onOpenLoginHistory?: () => void;
   unreadCount: number;
+  schedules: ScheduleItem[];
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,7 +21,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdminModal,
   onOpenHelpModal,
   onOpenLoginHistory,
-  unreadCount
+  unreadCount,
+  schedules
 }) => {
   const tabs = [
     { id: 'home', label: '🏠 Home', icon: Sparkles },
@@ -34,16 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b-4 border-black shadow-[0_4px_0_0_#000]">
-      {/* Top Ticker Accent */}
-      <div className="bg-gradient-to-r from-purple-600 via-pink-500 via-orange-400 to-yellow-400 text-black text-xs font-black py-1 px-3 flex items-center justify-between tracking-wider overflow-hidden">
-        <div className="flex items-center gap-2 animate-pulse">
-          <Zap className="w-3.5 h-3.5 fill-black" />
-          <span>KKG GURU KELAS 6 KECAMATAN PAGU • KEDIRI</span>
-        </div>
-        <div className="hidden sm:flex items-center gap-3">
-          <span>⚡ Satu Guru, Satu Vibe, Satu Tujuan.</span>
-        </div>
-      </div>
+      <AgendaTicker schedules={schedules} onOpenSchedule={() => setActiveTab('schedule')} />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 flex-wrap">
         {/* Logo Branding */}

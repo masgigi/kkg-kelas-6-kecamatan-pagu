@@ -23,11 +23,10 @@ import { supabase } from './lib/supabase';
 import { usePortalContent, saveContent } from './features/portal/api';
 import { PortalHub } from './features/portal/PortalHub';
 import { RecordsHub } from './features/portal/RecordsHub';
-import { blankContent, todayJakarta, upcomingSchedule } from './features/portal/model';
+import { blankContent, todayJakarta } from './features/portal/model';
 
 import { Navbar } from './components/Navbar';
 import { BottomNav } from './components/BottomNav';
-import { NotificationBanner } from './components/NotificationBanner';
 import { Dashboard } from './components/Dashboard';
 import { ScheduleView } from './components/ScheduleView';
 import { DriveView } from './components/DriveView';
@@ -488,7 +487,6 @@ export default function App() {
     storage.setNotifEnabled(enabled);
   };
 
-  const nextSchedule = upcomingSchedule(schedules);
 
   // Show loading spinner while Supabase syncs
   if (isLoading) {
@@ -539,14 +537,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#faf8f5] text-gray-900 font-sans selection:bg-yellow-300 selection:text-black">
-      {/* Top Ticker Notification Banner */}
-      <NotificationBanner
-        nextSchedule={nextSchedule}
-        setActiveTab={setActiveTab}
-      />
-
       {/* Main Navbar Header */}
       <Navbar
+        schedules={schedules}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         userSession={userSession}

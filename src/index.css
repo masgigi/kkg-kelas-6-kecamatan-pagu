@@ -8,6 +8,27 @@
 }
 
 button, a, input, select, textarea { outline-offset: 4px; }
+.agenda-ticker { display: flex; align-items: center; gap: .65rem; padding: .45rem .75rem; background: linear-gradient(100deg, #c084fc, #f9a8d4 55%, #fde047); color: #171024; border-bottom: 2px solid #000; font-size: .75rem; font-weight: 800; line-height: 1.5; }
+.agenda-ticker-label { display: inline-flex; align-items: center; flex-shrink: 0; gap: .4rem; background: #24113f; color: #fff; border-radius: .5rem; padding: .35rem .6rem; font-size: .65rem; font-weight: 900; }
+.agenda-ticker-viewport { flex: 1; min-width: 0; overflow: hidden; container-type: inline-size; }
+.agenda-ticker-track { display: flex; width: max-content; animation: agenda-slide-left 40s linear infinite; }
+.agenda-ticker-copy { flex-shrink: 0; min-width: 100cqw; white-space: nowrap; padding-right: 3rem; }
+.agenda-ticker-actions { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; }
+.agenda-ticker-motion-control, .agenda-ticker-link { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; border: 1.5px solid #000; border-radius: .5rem; background: #fff7d6; padding: .3rem .5rem; font-weight: 900; cursor: pointer; }
+.agenda-ticker-link { gap: .25rem; background: #fff; }
+.agenda-ticker-viewport:hover .agenda-ticker-track, .agenda-ticker:has(.agenda-ticker-link:focus-visible) .agenda-ticker-track { animation-play-state: paused; }
+.agenda-ticker-paused .agenda-ticker-track { animation: none; width: 100%; }
+.agenda-ticker-paused .agenda-ticker-copy { flex: 1 1 0; width: 100%; min-width: 0; white-space: normal; padding-right: 0; overflow-wrap: anywhere; }
+.agenda-ticker-paused .agenda-ticker-repeat { display: none; }
+@keyframes agenda-slide-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (max-width: 480px) {
+  .agenda-ticker { padding: .4rem .5rem; gap: .4rem; }
+  .agenda-ticker-label { max-width: 88px; padding: .3rem .4rem; font-size: .6rem; line-height: 1.25; }
+  .agenda-ticker-label svg { display: none; }
+  .agenda-ticker-paused { flex-wrap: wrap; }
+  .agenda-ticker-paused .agenda-ticker-viewport { flex: 1 0 100%; order: 3; }
+  .agenda-ticker-paused .agenda-ticker-actions { margin-left: auto; }
+}
 .portal-dialog { overflow-y: auto; overscroll-behavior: contain; }
 body:has(dialog[open]) { overflow: hidden; }
 .joglo-hero { min-height: 460px; }
@@ -78,4 +99,12 @@ body:has(dialog[open]) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .joglo-scene { transform: none !important; will-change: auto; }
+  .agenda-ticker-track { animation: none !important; width: 100%; }
+  .agenda-ticker-copy { flex: 1 1 0; width: 100%; min-width: 0; white-space: normal; padding-right: 0; overflow-wrap: anywhere; }
+  .agenda-ticker-repeat, .agenda-ticker-motion-control { display: none; }
+}
+@media (prefers-reduced-motion: reduce) and (max-width: 480px) {
+  .agenda-ticker { flex-wrap: wrap; }
+  .agenda-ticker-viewport { flex: 1 0 100%; order: 3; }
+  .agenda-ticker-actions { margin-left: auto; }
 }
