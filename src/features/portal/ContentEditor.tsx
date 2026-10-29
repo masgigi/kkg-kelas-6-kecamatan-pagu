@@ -41,7 +41,7 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
         {item.kind === 'documentation' ? <>
           <label className="portal-label">Keterangan kegiatan<textarea required maxLength={30000} rows={4} className="portal-input" placeholder="Ceritakan kegiatan secara singkat…" value={item.body} onChange={e => change('body', e.target.value)} /></label>
           <label className="portal-label">URL foto atau video<input required type="url" maxLength={2000} className="portal-input" placeholder="https://…" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} /></label>
-          <p className="text-sm font-semibold text-gray-700">Gunakan tautan foto langsung, video YouTube, atau file Google Drive yang dapat dilihat pengunjung. Pastikan akses tautan sudah dibuka untuk umum.</p>
+          <p className="text-sm font-semibold text-gray-700">Tempel tautan foto, YouTube, Google Drive, Google Foto (Bagikan → Buat link), atau postingan/Reel Instagram publik. Pastikan tautan dapat dilihat pengunjung tanpa meminta izin.</p>
           <MediaPreview url={mediaUrl} title={item.title || 'kegiatan'} />
         </> : <>
         <label className="portal-label">Ringkasan singkat<textarea maxLength={500} rows={2} className="portal-input" value={item.summary} onChange={e => change('summary', e.target.value)} /></label>

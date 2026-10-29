@@ -81,12 +81,19 @@ export function safeUrl(value?: string): string {
   } catch { return ''; }
 }
 
-export function documentationMedia(value?: string): { url: string; type: 'image' | 'video' | 'embed' | 'link'; embedUrl?: string } | null {
+export function documentationMedia(value?: string): { url: string; type: 'image' | 'video' | 'embed' | 'google-photos' | 'link'; embedUrl?: string; provider?: 'instagram' } | null {
   const url = safeUrl(value);
   if (!url) return null;
   const parsed = new URL(url);
   const host = parsed.hostname.toLowerCase();
   const path = parsed.pathname;
+  if (['instagram.com', 'www.instagram.com', 'm.instagram.com'].includes(host)) {
+    const post = path.match(/^\/(p|reel|tv)\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+    if (post) return { url, type: 'embed', provider: 'instagram', embedUrl: `https://www.instagram.com/p/${post[2]}/embed/` };
+  }
+  if ((host === 'photos.app.goo.gl' && /^\/[a-zA-Z0-9_-]+\/?$/.test(path)) ||
+      (host === 'photos.google.com' && /^\/share\//.test(path))) return { url, type: 'google-photos' };
+  if (/^lh\d+\.googleusercontent\.com$/.test(host)) return { url, type: 'image' };
   let videoId = '';
   if (host === 'youtu.be') videoId = path.slice(1).split('/')[0];
   if (host === 'youtube.com' || host === 'www.youtube.com' || host === 'm.youtube.com') {
