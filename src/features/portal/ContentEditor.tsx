@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Save, Upload } from 'lucide-react';
-import { PortalContent, contentConfig } from './model';
+import { PortalContent, getContentConfig } from './model';
 import { saveContent, uploadPortalFile } from './api';
 import { PortalModal } from './PortalModal';
 import { MediaPreview } from './MediaPreview';
@@ -12,7 +12,7 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
   const [error, setError] = useState('');
   const [tagsInput, setTagsInput] = useState(initial.tags.join(', '));
   const [mediaUrl, setMediaUrl] = useState(initial.details.media_url || initial.image_url || initial.details.video || (initial.details.photos || '').split('\n').find(Boolean) || initial.link_url);
-  const config = contentConfig[item.kind];
+  const config = getContentConfig(item);
   const isDocument = item.kind === 'service' && ['Daftar Hadir', 'Undangan', 'Notulen'].includes(item.details.category);
   const change = (key: keyof PortalContent, value: unknown) => setItem(prev => ({ ...prev, [key]: value }));
   const upload = async (file: File | undefined, target: 'image_url' | 'link_url') => {

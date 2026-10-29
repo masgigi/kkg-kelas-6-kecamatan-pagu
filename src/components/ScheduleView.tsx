@@ -34,7 +34,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
       item.date.includes(searchTerm);
     const matchesStatus = statusFilter === 'semua' || displayStatus(item) === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  }).sort((a, b) => a.date.localeCompare(b.date));
 
   const getStatusBadge = (status: string) => {
     switch (status) {

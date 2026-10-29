@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowUpRight, Edit2, Plus, Search } from 'lucide-react';
-import { ContentKind, PortalContent, blankContent, contentConfig, safeUrl } from './model';
+import { ContentKind, PortalContent, blankContent, getContentConfig, safeUrl } from './model';
 import { ContentEditor } from './ContentEditor';
 import { PortalModal } from './PortalModal';
 import { MediaPreview } from './MediaPreview';
@@ -12,7 +12,7 @@ function DocumentationVisual({ item, compact = false }: { item: PortalContent; c
 }
 
 function ContentDetail({ item, onClose }: { item: PortalContent; onClose: () => void }) {
-  const config = contentConfig[item.kind];
+  const config = getContentConfig(item);
   const photos = (item.details.photos || '').split('\n').map(safeUrl).filter(Boolean).slice(0, 30);
   return <PortalModal title={item.title} onClose={onClose}>
     <article className="space-y-5">
@@ -29,16 +29,25 @@ function ContentDetail({ item, onClose }: { item: PortalContent; onClose: () => 
   </PortalModal>;
 }
 
-export function ContentSection({ kind, items, isAdmin, refresh, emptyText, documentCategory }: { kind: ContentKind; items: PortalContent[]; isAdmin: boolean; refresh: () => Promise<void>; emptyText?: string; documentCategory?: string }) {
+export function ContentSection({ kind, items, isAdmin, refresh, emptyText, documentCategory, contentVariant }: { kind: ContentKind; items: PortalContent[]; isAdmin: boolean; refresh: () => Promise<void>; emptyText?: string; documentCategory?: string; contentVariant?: 'team' }) {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState('all');
   const [limit, setLimit] = useState(12);
   const [editing, setEditing] = useState<PortalContent | null>(null);
   const [detail, setDetail] = useState<PortalContent | null>(null);
-  const config = documentCategory ? { ...contentConfig[kind], label: documentCategory } : contentConfig[kind];
-  const records = items.filter(i => i.kind === kind && (isAdmin || i.status === 'published'));
-  const filterFields = config.fields.filter(f => ['category', 'subject', 'semester', 'period', 'progress'].includes(f.key) && !(documentCategory && f.key === 'category'));
+  const baseConfig = getContentConfig({ kind, details: contentVariant === 'team' ? { record_type: 'team' } : {} });
+  const config = documentCategory ? { ...baseConfig, label: documentCategory } : baseConfig;
+  const records = items.filter(i => i.kind === kind && (kind !== 'committee' || (contentVariant === 'team' ? i.details.record_type === 'team' : i.details.record_type !== 'team')) && (isAdmin || i.status === 'published'));
+  const filterFields = config.fields.filter(f => ['category', 'subject', 'semester', 'period', 'progress', 'team'].includes(f.key) && !(documentCategory && f.key === 'category'));
+  const createItem = () => {
+    const item = blankContent(kind);
+    if (documentCategory) item.details = { category: documentCategory };
+    else if (kind === 'committee') item.details = contentVariant === 'team'
+      ? { record_type: 'team', position: 'Tupoksi Tim', term: '2026/2027' }
+      : { record_type: 'person', term: '2026/2027' };
+    setEditing(item);
+  };
   const filtered = useMemo(() => records.filter(item =>
     (visibility === 'all' || item.status === visibility) &&
     Object.entries(filters).every(([key, value]) => !value || item.details[key] === value) &&
@@ -47,11 +56,11 @@ export function ContentSection({ kind, items, isAdmin, refresh, emptyText, docum
   return <section className="space-y-4" aria-label={config.label}>
     <div className="flex flex-wrap justify-between items-center gap-3">
       <h2 className="text-xl sm:text-2xl font-black">{config.emoji} {config.label}</h2>
-      {isAdmin && <button className="portal-button bg-yellow-300" onClick={() => setEditing({ ...blankContent(kind), details: documentCategory ? { category: documentCategory } : {} })}><Plus size={17} />Tambah {config.label}</button>}
+      {isAdmin && <button className="portal-button bg-yellow-300" onClick={createItem}><Plus size={17} />Tambah {config.label}</button>}
     </div>
     {kind !== 'profile' && <div className="flex flex-wrap gap-3">
       <label className="relative flex-1 min-w-44"><span className="sr-only">Cari {config.label}</span><Search size={18} className="absolute left-3 top-3.5" /><input className="portal-input !pl-10" placeholder={`Cari ${config.label.toLowerCase()}…`} value={query} onChange={e => { setQuery(e.target.value); setLimit(12); }} /></label>
-      {filterFields.map(field => <label key={field.key} className="min-w-32"><span className="sr-only">Filter {field.label}</span><select aria-label={`Filter ${field.label}`} className="portal-input" value={filters[field.key] || ''} onChange={e => { setFilters({ ...filters, [field.key]: e.target.value }); setLimit(12); }}><option value="">Semua {field.label.toLowerCase()}</option>{Array.from(new Set(records.map(i => i.details[field.key]).filter(Boolean))).sort().map(v => <option key={v}>{v}</option>)}</select></label>)}
+      {filterFields.map(field => <label key={field.key} className="min-w-32 max-w-full"><span className="sr-only">Filter {field.label}</span><select aria-label={`Filter ${field.label}`} className="portal-input" value={filters[field.key] || ''} onChange={e => { setFilters({ ...filters, [field.key]: e.target.value }); setLimit(12); }}><option value="">Semua {field.label.toLowerCase()}</option>{Array.from(new Set(records.map(i => i.details[field.key]).filter(Boolean))).sort().map(v => <option key={v}>{v}</option>)}</select></label>)}
     </div>}
     {isAdmin && <label className="portal-label max-w-xs">Tampilkan status<select className="portal-input" value={visibility} onChange={e => setVisibility(e.target.value)}><option value="all">Semua status</option><option value="published">Terbit</option><option value="draft">Draf</option><option value="archived">Arsip</option></select></label>}
     {!filtered.length ? <div className={`${config.color} rounded-3xl border-3 border-black p-7 shadow-[4px_4px_0_#000] text-center`}>
@@ -66,8 +75,9 @@ export function ContentSection({ kind, items, isAdmin, refresh, emptyText, docum
         <div className="p-5 flex-1 flex flex-col gap-3">
           <h3 className="font-black text-lg break-words">{item.title}</h3>
           <p className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${kind !== 'profile' ? 'line-clamp-4' : ''}`}>{kind === 'documentation' ? item.body : item.summary || item.body}</p>
+          {contentVariant === 'team' && item.details.target && <div className="rounded-xl border-2 border-purple-200 bg-purple-50 p-3"><p className="text-xs font-black text-purple-900 mb-1">Produk / Target Utama</p><p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{item.details.target}</p></div>}
           {kind === 'profile' && item.summary && <p className="whitespace-pre-wrap text-sm leading-relaxed">{item.body}</p>}
-          <div className="flex flex-wrap gap-1.5">{[item.details.period, item.details.school, item.details.subject, item.details.semester && `Semester ${item.details.semester}`, item.details.date, ...item.tags].filter(Boolean).map((tag, idx) => <span key={idx} className="text-xs font-bold px-2 py-1 rounded-lg border border-black bg-gray-50 break-words">{tag}</span>)}</div>
+          <div className="flex flex-wrap gap-1.5">{[item.details.period, item.details.team, item.details.term, item.details.school, item.details.subject, item.details.semester && `Semester ${item.details.semester}`, item.details.date, ...item.tags].filter(Boolean).map((tag, idx) => <span key={idx} className="text-xs font-bold px-2 py-1 rounded-lg border border-black bg-gray-50 break-words">{tag}</span>)}</div>
           {item.author_name && <p className="text-xs font-bold text-gray-600">Oleh {item.author_name}</p>}
           <div className="mt-auto pt-2 flex flex-wrap gap-2">
             <button className="portal-button bg-purple-100" onClick={() => setDetail(item)}>Lihat detail</button>

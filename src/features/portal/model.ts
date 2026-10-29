@@ -30,17 +30,24 @@ export interface Submission {
   created_at: string;
 }
 export type DetailField = { key: string; label: string; type?: 'textarea' | 'date' | 'url' | 'email'; options?: string[] };
-export const contentConfig: Record<ContentKind, { label: string; emoji: string; color: string; titleLabel: string; bodyLabel: string; fields: DetailField[] }> = {
+export type ContentConfig = { label: string; emoji: string; color: string; titleLabel: string; bodyLabel: string; fields: DetailField[] };
+export const contentConfig: Record<ContentKind, ContentConfig> = {
   profile: { label: 'Profil KKG', emoji: '⚡', color: 'bg-purple-200', titleLabel: 'Nama KKG', bodyLabel: 'Tentang KKG', fields: [
     { key: 'vision', label: 'Visi', type: 'textarea' }, { key: 'mission', label: 'Misi (satu per baris)', type: 'textarea' },
     { key: 'address', label: 'Alamat sekretariat' }, { key: 'contact', label: 'Kontak sekretariat' }, { key: 'email', label: 'Email sekretariat', type: 'email' }
   ] },
   committee: { label: 'Pengurus', emoji: '👥', color: 'bg-cyan-200', titleLabel: 'Nama pengurus', bodyLabel: 'Tugas / keterangan', fields: [
-    { key: 'position', label: 'Jabatan' }, { key: 'school', label: 'Sekolah' }, { key: 'term', label: 'Masa bakti' }
+    { key: 'position', label: 'Jabatan / peran' }, { key: 'team', label: 'Tim' }, { key: 'school', label: 'Sekolah (opsional)' }, { key: 'term', label: 'Tahun pelajaran / masa bakti' }
   ] },
   program: { label: 'Program Kerja', emoji: '🎯', color: 'bg-pink-200', titleLabel: 'Nama program', bodyLabel: 'Rencana kegiatan dan target hasil', fields: [
     { key: 'period', label: 'Tahun / semester' }, { key: 'responsible', label: 'Penanggung jawab' },
-    { key: 'progress', label: 'Status program', options: ['Direncanakan', 'Berjalan', 'Selesai'] }, { key: 'date', label: 'Target pelaksanaan', type: 'date' }
+    { key: 'progress', label: 'Status program', options: ['Belum dirinci', 'Direncanakan', 'Berjalan', 'Selesai'] },
+    { key: 'month', label: 'Bulan kegiatan' }, { key: 'date', label: 'Tanggal pelaksanaan', type: 'date' },
+    { key: 'time', label: 'Waktu' }, { key: 'location', label: 'Tempat' },
+    { key: 'target', label: 'Target / sasaran', type: 'textarea' },
+    { key: 'facilitator', label: 'Fasilitator / narasumber', type: 'textarea' },
+    { key: 'implementation', label: 'Terlaksana / tidak', options: ['Terlaksana', 'Tidak'] },
+    { key: 'notes', label: 'Keterangan', type: 'textarea' }
   ] },
   documentation: { label: 'Dokumentasi', emoji: '📸', color: 'bg-orange-200', titleLabel: 'Nama kegiatan / album', bodyLabel: 'Cerita dan hasil kegiatan', fields: [
     { key: 'date', label: 'Tanggal kegiatan', type: 'date' }, { key: 'location', label: 'Lokasi' },
@@ -60,6 +67,17 @@ export const contentConfig: Record<ContentKind, { label: string; emoji: string; 
     { key: 'category', label: 'Kategori', options: ['Daftar Hadir', 'Undangan', 'Notulen', 'Surat', 'Tautan Penting', 'Panduan', 'Lainnya'] }, { key: 'date', label: 'Tanggal dokumen', type: 'date' }
   ] }
 };
+
+export function getContentConfig(item: Pick<PortalContent, 'kind' | 'details'>): ContentConfig {
+  if (item.kind === 'committee' && item.details.record_type === 'team') return {
+    label: 'Tupoksi Tim', emoji: '🎯', color: 'bg-violet-200', titleLabel: 'Nama tim', bodyLabel: 'Fokus kerja',
+    fields: [
+      { key: 'target', label: 'Produk / Target Utama', type: 'textarea' },
+      { key: 'term', label: 'Tahun pelajaran' }
+    ]
+  };
+  return contentConfig[item.kind];
+}
 
 export function safeUrl(value?: string): string {
   if (!value?.trim()) return '';

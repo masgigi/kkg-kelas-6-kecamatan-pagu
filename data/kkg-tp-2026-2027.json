@@ -1,0 +1,404 @@
+{
+  "school_year": "2026/2027",
+  "source": "Tiga gambar pengguna dan konfirmasi ejaan/nama sekolah pada percakapan 29 Oktober 2026.",
+  "july": {
+    "month": "2026-07",
+    "date": null,
+    "time": null,
+    "location": null,
+    "title": null,
+    "target": null,
+    "facilitator": null,
+    "implementation": null,
+    "notes": null
+  },
+  "programs": [
+    {
+      "month": "2026-08",
+      "date": "2026-08-19",
+      "location": "SDN Bulupasar",
+      "title": "Pembahasan Rencana Kerja KKG, Analisis CP–TP–ATP, dan Pengembangan Pembelajaran Mendalam Kelas 6",
+      "target": "Program kerja final, pemetaan CP, TP, ATP, dan kesepakatan fokus pembelajaran semester 1",
+      "facilitator": "Ibu Pengawas SD dan Ibu Kepala Sekolah Pendamping",
+      "implementation": "Terlaksana",
+      "notes": "Berjalan lancar; menjadi dasar program kerja KKG",
+      "time": "12.30 - 14.30 WIB",
+      "schedule_id": "sch-tp2026-2027-2026-08",
+      "source_row": 2
+    },
+    {
+      "month": "2026-09",
+      "date": "2026-09-09",
+      "location": "SDN Pagu 3",
+      "title": "Penyusunan, Telaah, dan Moderasi Kisi-kisi/Soal STS Semester 1",
+      "target": "Kisi-kisi dan bank soal tervalidasi, proporsional, disertai kunci jawaban dan pedoman penskoran",
+      "facilitator": "Tim Asesmen KKG Kelas 6 dan Kepala Sekolah Pendamping",
+      "implementation": "Terlaksana",
+      "notes": "Berjalan lancar; menjadi dasar program kerja KKG",
+      "time": "12.30 - 14.30 WIB",
+      "schedule_id": "sch-1",
+      "source_row": 3
+    },
+    {
+      "month": "2026-10",
+      "date": "2026-10-16",
+      "location": "SDN Menang",
+      "title": "Persiapan dan Koordinasi Lomba Cerdas Cermat Wawasan Kebangsaan",
+      "target": "Kisi-kisi materi wawasan kebangsaan, paket soal (babak penyisihan dan final), media/aplikasi kuis lomba, serta pedoman penskoran dan penjurian",
+      "facilitator": "Tim Asesmen & Evaluasi, Tim Digital, AI & Media Pembelajaran, Ketua KKG dan KKKS",
+      "implementation": "Terlaksana",
+      "notes": "Berjalan lancar",
+      "time": "07.30 - 11.00 WIB",
+      "schedule_id": "sch-1788935924055",
+      "source_row": 4
+    },
+    {
+      "month": "2026-11",
+      "date": "2026-11-11",
+      "location": "SDN WONOSARI 2",
+      "title": "Pembelajaran Berdiferensiasi Berbasis Data Asesmen",
+      "target": "Pemetaan kelompok belajar, strategi remedial/pengayaan, dan LKPD diferensiasi",
+      "facilitator": "Guru berbagi praktik baik, Tim Pembelajaran & Lesson Study dan Tim KKG Kelas 6",
+      "implementation": "",
+      "notes": "",
+      "time": "12.30 - 14.30 WIB",
+      "schedule_id": "sch-tp2026-2027-2026-11",
+      "source_row": 5
+    },
+    {
+      "month": "2026-12",
+      "date": "2026-12-02",
+      "location": "SD EMAUS",
+      "title": "Analisis Hasil SAS Semester 1 dan Tindak Lanjut Pembelajaran",
+      "target": "Analisis hasil belajar, materi belum tuntas, program remedial/pengayaan, dan refleksi semester 1",
+      "facilitator": "Tim Kurikulum & Perangkat Ajar dan Tim Asesmen KKG dan Pengurus Inti",
+      "implementation": "",
+      "notes": "",
+      "time": "12.30 - 14.30 WIB",
+      "schedule_id": "sch-tp2026-2027-2026-12",
+      "source_row": 6
+    },
+    {
+      "month": "2027-01",
+      "date": "2027-01-06",
+      "location": "SDNU PAGU",
+      "title": "Bedah CP–TP–ATP Semester 2 dan Penetapan Materi Esensial Akhir Fase C",
+      "target": "Peta materi esensial, indikator keberhasilan, dan rencana pembelajaran semester 2 yang selaras",
+      "facilitator": "Pengawas SD, Kepala Sekolah Pendamping, dan Ketua KKG",
+      "implementation": "",
+      "notes": "",
+      "time": "12.30 - 14.30 WIB",
+      "schedule_id": "sch-tp2026-2027-2027-01",
+      "source_row": 7
+    },
+    {
+      "month": "2027-02",
+      "date": "2027-02-03",
+      "location": "SDN PAGU 2",
+      "title": "Penguatan Literasi dan Numerasi melalui Soal Kontekstual dan Asesmen Formatif",
+      "target": "Bank tugas/soal kontekstual, rubrik, serta strategi umpan balik cepat untuk kelas 6",
+      "facilitator": "Tim Literasi-Numerasi KKG dan guru berbagi praktik baik",
+      "implementation": "",
+      "notes": "",
+      "time": "12.30 - 14.30 WIB",
+      "schedule_id": "sch-tp2026-2027-2027-02",
+      "source_row": 8
+    },
+    {
+      "month": "2027-03",
+      "date": "2027-03-03",
+      "location": "SDN SEMANDING",
+      "title": "Lesson Study II: Microteaching dan Peer Observation",
+      "target": "Praktik mengajar singkat, catatan observasi sejawat, dan rencana perbaikan pembelajaran",
+      "facilitator": "Guru model, observer sejawat, dan Ketua KKG",
+      "implementation": "",
+      "notes": "",
+      "time": "12.30 - 14.30 WIB",
+      "schedule_id": "sch-tp2026-2027-2027-03",
+      "source_row": 9
+    },
+    {
+      "month": "2027-04",
+      "date": "2027-04-07",
+      "location": "SDN WONOSARI 1",
+      "title": "Pemanfaatan AI dan Media Digital Etis untuk Pembelajaran Kelas 6",
+      "target": "1 media/aktivitas digital per guru dan panduan penggunaan AI yang aman, terarah, serta sesuai tujuan belajar",
+      "facilitator": "TIM TIK/AI KKG Kelas 6",
+      "implementation": "",
+      "notes": "",
+      "time": "12.30 - 14.30 WIB",
+      "schedule_id": "sch-tp2026-2027-2027-04",
+      "source_row": 10
+    },
+    {
+      "month": "2027-05",
+      "date": "2027-05-05",
+      "location": "SDN WATES",
+      "title": "Moderasi Asesmen Akhir Kelas 6 dan Penguatan Portofolio Capaian Murid",
+      "target": "Instrumen asesmen terstandar, rubrik, portofolio bukti belajar, dan rencana tindak lanjut",
+      "facilitator": "Tim Asesmen KKG dan Kepala Sekolah Pendamping",
+      "implementation": "",
+      "notes": "",
+      "time": "12.30 - 14.30 WIB",
+      "schedule_id": "sch-tp2026-2027-2027-05",
+      "source_row": 11
+    },
+    {
+      "month": "2027-06",
+      "date": "2027-06-02",
+      "location": "SDN SITIMERTO",
+      "title": "Evaluasi Program KKG, Diseminasi Praktik Baik, dan Penyusunan Rencana Tindak Lanjut",
+      "target": "Laporan evaluasi 1 tahun, kumpulan praktik baik, repositori perangkat, dan rekomendasi program 2027/2028",
+      "facilitator": "Pengawas SD, Kepala Sekolah Pendamping, dan Ketua KKG",
+      "implementation": "",
+      "notes": "",
+      "time": "12.30 - 14.30 WIB",
+      "schedule_id": "sch-tp2026-2027-2027-06",
+      "source_row": 12
+    }
+  ],
+  "members": [
+    {
+      "name": "IGIGIH BUDI PRADANA",
+      "team": "Pengurus Inti",
+      "position": "Ketua KKG / Koordinator Umum",
+      "duty": "Mengkoordinasikan seluruh program, memimpin rapat, memastikan tindak lanjut dan kolaborasi antartim.",
+      "teacher_id": "t-9",
+      "school": "SDN BULUPASAR",
+      "source_row": 1
+    },
+    {
+      "name": "WASIK KHOLIFATUN",
+      "team": "Pengurus Inti",
+      "position": "Sekretaris",
+      "duty": "Menyiapkan agenda, notulen, administrasi, surat-menyurat, dokumentasi keputusan, dan arsip kegiatan.",
+      "teacher_id": "t-13",
+      "school": "SDN BENDO",
+      "source_row": 2
+    },
+    {
+      "name": "MARYAM JUNARI",
+      "team": "Pengurus Inti",
+      "position": "Bendahara",
+      "duty": "Mengelola administrasi keuangan, pencatatan pemasukan-pengeluaran, dan laporan pertanggungjawaban.",
+      "teacher_id": "t-6",
+      "school": "SDN TANJUNG",
+      "source_row": 3
+    },
+    {
+      "name": "MU.MININ",
+      "team": "Kurikulum & Perangkat Ajar",
+      "position": "Koordinator",
+      "duty": "Mengoordinasikan penyelarasan kurikulum, ATP, perencanaan pembelajaran, bahan ajar, dan LKPD kelas 6.",
+      "teacher_id": "t-mu-minin-2026",
+      "school": "SDN PAGU 3",
+      "source_row": 4
+    },
+    {
+      "name": "VRINTTI DIO SAPUTRO",
+      "team": "Kurikulum & Perangkat Ajar",
+      "position": "Anggota",
+      "duty": "Menyusun dan menelaah perangkat ajar serta mendukung pengembangan bahan ajar bersama.",
+      "teacher_id": "t-18",
+      "school": "SD EMAUS",
+      "source_row": 5
+    },
+    {
+      "name": "HERMIN TRIYATI",
+      "team": "Kurikulum & Perangkat Ajar",
+      "position": "Anggota",
+      "duty": "Mendukung penyusunan perangkat ajar, literasi-numerasi, dan pembelajaran mendalam.",
+      "teacher_id": "t-1",
+      "school": "SDN SEMEN",
+      "source_row": 6
+    },
+    {
+      "name": "METTY PUSPITASARI",
+      "team": "Kurikulum & Perangkat Ajar",
+      "position": "Anggota",
+      "duty": "Membantu penyusunan, uji kelayakan, dan perbaikan perangkat pembelajaran kelas 6.",
+      "teacher_id": "t-2",
+      "school": "SDN BULUPASAR",
+      "source_row": 7
+    },
+    {
+      "name": "ELFANDY RIZKI PRATAMA",
+      "team": "Asesmen & Evaluasi",
+      "position": "Koordinator",
+      "duty": "Mengoordinasikan kisi-kisi, bank soal, asesmen formatif-sumatif, analisis hasil, remedial, dan pengayaan.",
+      "teacher_id": "t-11",
+      "school": "SDN JAGUNG",
+      "source_row": 8
+    },
+    {
+      "name": "EVAANNA TENTY AGUSTIN",
+      "team": "Asesmen & Evaluasi",
+      "position": "Anggota",
+      "duty": "Menyusun dan menelaah soal, rubrik, serta instrumen asesmen kelas 6.",
+      "teacher_id": "t-17",
+      "school": "SDN PAGU 2",
+      "source_row": 9
+    },
+    {
+      "name": "SYAFA'ATUL MUDA'IMAH",
+      "team": "Asesmen & Evaluasi",
+      "position": "Anggota",
+      "duty": "Mendukung analisis hasil asesmen, pemetaan ketuntasan, serta tindak lanjut pembelajaran.",
+      "teacher_id": "t-3",
+      "school": "SDN SEMANDING",
+      "source_row": 10
+    },
+    {
+      "name": "DAIRABYI AINI ZAIN",
+      "team": "Asesmen & Evaluasi",
+      "position": "Anggota",
+      "duty": "Membantu pengembangan bank soal, analisis butir, remedial, dan pengayaan.",
+      "teacher_id": "t-16",
+      "school": "SDN WONOSARI 2",
+      "source_row": 11
+    },
+    {
+      "name": "ENY WIDYA WATI",
+      "team": "Pembelajaran & Lesson Study",
+      "position": "Koordinator",
+      "duty": "Mengoordinasikan lesson study, guru model, observasi kelas, refleksi, dan perbaikan pembelajaran.",
+      "teacher_id": "t-4",
+      "school": "SDN WATES",
+      "source_row": 12
+    },
+    {
+      "name": "ANANG SULISTYONO",
+      "team": "Pembelajaran & Lesson Study",
+      "position": "Anggota",
+      "duty": "Mendukung perencanaan pembelajaran kolaboratif dan observasi praktik pembelajaran.",
+      "teacher_id": "t-5",
+      "school": "SDN WONOSARI 1",
+      "source_row": 13
+    },
+    {
+      "name": "ELITA NUR A'INI",
+      "team": "Pembelajaran & Lesson Study",
+      "position": "Anggota",
+      "duty": "Membantu pelaksanaan refleksi, umpan balik sejawat, dan penyusunan praktik baik.",
+      "teacher_id": "t-14",
+      "school": "SDN TENGGERKIDUL 1",
+      "source_row": 14
+    },
+    {
+      "name": "INDAH WAHYUNINGTIAS",
+      "team": "Pembelajaran & Lesson Study",
+      "position": "Anggota",
+      "duty": "Mendukung implementasi, dokumentasi hasil lesson study, dan tindak lanjut di kelas.",
+      "teacher_id": "t-1788934700509",
+      "school": "SDN PAGU 1",
+      "source_row": 15
+    },
+    {
+      "name": "PUTRI AGUSTINA",
+      "team": "Digital, AI & Media Pembelajaran",
+      "position": "Koordinator",
+      "duty": "Mengoordinasikan pemanfaatan AI, media digital, aplikasi pembelajaran, dan repositori digital KKG.",
+      "teacher_id": "t-7",
+      "school": "SDN KAMBINGAN",
+      "source_row": 16
+    },
+    {
+      "name": "WHENDY NILA ADELINA",
+      "team": "Digital, AI & Media Pembelajaran",
+      "position": "Anggota",
+      "duty": "Mendukung pembuatan media interaktif, formulir digital, dan sumber belajar berbasis teknologi.",
+      "teacher_id": "t-8",
+      "school": "SDN TANJUNG",
+      "source_row": 17
+    },
+    {
+      "name": "WAHYU SETYAWAN",
+      "team": "Digital, AI & Media Pembelajaran",
+      "position": "Anggota",
+      "duty": "Membantu pengembangan media, presentasi, kuis digital, dan pemanfaatan AI secara bertanggung jawab.",
+      "teacher_id": "t-10",
+      "school": "SDN MENANG",
+      "source_row": 18
+    },
+    {
+      "name": "INDAH TRILESTARI",
+      "team": "Digital, AI & Media Pembelajaran",
+      "position": "Anggota",
+      "duty": "Mendukung kurasi, penyimpanan, dan berbagi media serta perangkat pembelajaran digital.",
+      "teacher_id": "t-12",
+      "school": "SDN TENGGERKIDUL 2",
+      "source_row": 19
+    },
+    {
+      "name": "EVA AGUSTIN",
+      "team": "Dokumentasi, Publikasi & Praktik Baik",
+      "position": "Koordinator",
+      "duty": "Mengoordinasikan dokumentasi, publikasi, portofolio kegiatan, dan praktik baik KKG.",
+      "teacher_id": "t-20",
+      "school": "SDNU PAGU",
+      "source_row": 20
+    },
+    {
+      "name": "EVA NURCHABIB",
+      "team": "Dokumentasi, Publikasi & Praktik Baik",
+      "position": "Anggota",
+      "duty": "Mendokumentasikan kegiatan dan menyusun arsip foto, laporan, serta hasil kerja KKG.",
+      "teacher_id": "t-19",
+      "school": "SDNU PAGU",
+      "source_row": 21
+    },
+    {
+      "name": "ENGGAR ADI PUSPITA",
+      "team": "Dokumentasi, Publikasi & Praktik Baik",
+      "position": "Anggota",
+      "duty": "Mendukung publikasi, portofolio, laporan kegiatan, dan penyebarluasan praktik baik.",
+      "teacher_id": "t-15",
+      "school": "SDN SITIMERTO",
+      "source_row": 22
+    }
+  ],
+  "teams": [
+    {
+      "name": "Pengurus Inti",
+      "focus": "Arah program, administrasi, koordinasi, keuangan, evaluasi dan tindak lanjut.",
+      "target": "Program kerja tahunan, notulen, administrasi kegiatan, evaluasi dan laporan KKG.",
+      "source_row": 1
+    },
+    {
+      "name": "Kurikulum & Perangkat Ajar",
+      "focus": "ATP, perencanaan pembelajaran, bahan ajar, LKPD, literasi-numerasi, dan pembelajaran mendalam.",
+      "target": "Perangkat ajar bersama yang siap digunakan di kelas 6.",
+      "source_row": 2
+    },
+    {
+      "name": "Asesmen & Evaluasi",
+      "focus": "Kisi-kisi, soal HOTS/TKA, rubrik, asesmen formatif-sumatif, analisis butir, remedial dan pengayaan.",
+      "target": "Bank soal bersama KKG, instrumen asesmen, analisis hasil dan tindak lanjut.",
+      "source_row": 3
+    },
+    {
+      "name": "Pembelajaran & Lesson Study",
+      "focus": "Plan–Do–See, guru model, observasi kelas, refleksi sejawat, dan perbaikan pembelajaran.",
+      "target": "Minimal satu siklus lesson study dan dokumentasi praktik baik.",
+      "source_row": 4
+    },
+    {
+      "name": "Digital, AI & Media Pembelajaran",
+      "focus": "Pemanfaatan AI, Canva, Google Form, kuis digital, media interaktif, aplikasi dan repositori.",
+      "target": "Media pembelajaran digital yang digunakan langsung oleh guru kelas 6.",
+      "source_row": 5
+    },
+    {
+      "name": "Dokumentasi, Publikasi & Praktik Baik",
+      "focus": "Dokumentasi kegiatan, laporan, publikasi, portofolio, dan penyebarluasan praktik baik.",
+      "target": "Portofolio digital KKG, dokumentasi kegiatan, dan kumpulan praktik baik.",
+      "source_row": 6
+    }
+  ],
+  "confirmed_corrections": [
+    "Oktober:16 Oktober 2026",
+    "VRINTTI DIO SAPUTRO",
+    "INDAH WAHYUNINGTIAS",
+    "MU.MININ: SDN PAGU 3"
+  ]
+}
