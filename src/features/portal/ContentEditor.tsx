@@ -5,6 +5,7 @@ import { saveContent, uploadPortalFile } from './api';
 import { PortalModal } from './PortalModal';
 import { MediaPreview } from './MediaPreview';
 import { DocumentPreview } from './DocumentPreview';
+import { PhotoPreview } from './PhotoPreview';
 
 export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalContent; onClose: () => void; onSaved: () => Promise<void> }) {
   const [item, setItem] = useState(initial);
@@ -69,6 +70,8 @@ export function ContentEditor({ initial, onClose, onSaved }: { initial: PortalCo
         {uploadReady && <p role="status" className="rounded-xl bg-lime-100 p-3 text-sm font-bold">Berkas siap. {item.status === 'published' ? 'Klik Simpan & Terbitkan agar muncul di katalog.' : 'Klik Simpan untuk menyimpan konten; pilih status Terbit agar terlihat oleh pengunjung.'}</p>}
         <label className="portal-label">URL foto sampul / pengurus<input type="url" maxLength={2000} className="portal-input" placeholder="https://…" value={item.image_url} onChange={e => change('image_url', e.target.value)} /></label>
         <label className="portal-label">Atau unggah foto<input type="file" className="portal-input" accept="image/jpeg,image/png,image/webp" onChange={e => void upload(e.target.files?.[0], 'image_url')} /></label>
+        <p className="text-sm font-semibold text-gray-600">Gunakan URL gambar langsung, tautan file foto Google Drive, atau tautan berbagi Google Foto. Untuk Drive, pilih Akses umum → Siapa saja yang memiliki link → Pelihat. Klik Simpan & Terbitkan untuk menampilkan foto di web.</p>
+        {item.image_url.trim() && <section aria-label="Pratinjau foto" className="space-y-2"><p className="font-bold text-sm">Pratinjau foto</p><PhotoPreview key={item.image_url.trim()} url={item.image_url} title={item.title || 'Foto pengurus / sampul'} portrait={item.kind === 'committee'} /></section>}
         <p className="text-xs font-semibold text-gray-600">Berkas unggahan memakai penyimpanan publik KKG. Simpan bahan yang memang boleh dibagikan.</p>
         <label className="portal-label">Tag (pisahkan dengan koma)<input maxLength={500} className="portal-input" value={tagsInput} onChange={e => setTagsInput(e.target.value)} /></label>
         </>}

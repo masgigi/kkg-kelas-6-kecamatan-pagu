@@ -6,6 +6,7 @@ import { PortalModal } from './PortalModal';
 import { MediaPreview } from './MediaPreview';
 import { DocumentPreview } from './DocumentPreview';
 import { ResourcePreview } from './ResourcePreview';
+import { PhotoPreview } from './PhotoPreview';
 
 function DocumentationVisual({ item, compact = false }: { item: PortalContent; compact?: boolean }) {
   const url = item.details.media_url || item.image_url || item.details.video || (item.details.photos || '').split('\n').find(Boolean) || item.link_url;
@@ -19,7 +20,7 @@ function ContentDetail({ item, onClose }: { item: PortalContent; onClose: () => 
     <article className="space-y-5">
       {item.kind === 'resource' && <ResourcePreview url={item.link_url} title={item.title} />}
       {item.kind === 'service' && item.link_url && <DocumentPreview url={item.link_url} title={item.title} />}
-      {item.kind === 'documentation' ? <DocumentationVisual item={item} /> : safeUrl(item.image_url) && <img src={safeUrl(item.image_url)} alt={item.title} className="w-full max-h-80 object-contain rounded-2xl border-2 border-black bg-gray-100" />}
+      {item.kind === 'documentation' ? <DocumentationVisual item={item} /> : <PhotoPreview url={item.image_url} title={item.title} portrait={item.kind === 'committee'} />}
       {item.kind !== 'documentation' && item.summary && <p className="font-bold text-purple-900">{item.summary}</p>}
       {item.author_name && <p className="text-sm font-semibold">Oleh {item.author_name}</p>}
       <p className="whitespace-pre-wrap break-words leading-relaxed">{item.body}</p>
@@ -74,7 +75,7 @@ export function ContentSection({ kind, items, isAdmin, refresh, emptyText, docum
       {filtered.slice(0, limit).map(item => <article key={item.id} className="overflow-hidden bg-white rounded-3xl border-3 border-black shadow-[5px_5px_0_#000] flex flex-col">
         {kind === 'resource' && <ResourcePreview url={item.link_url} title={item.title} compact />}
         {documentCategory && safeUrl(item.link_url) && <DocumentPreview url={item.link_url} title={item.title} compact />}
-        {kind === 'documentation' ? <DocumentationVisual item={item} compact /> : safeUrl(item.image_url) && <img src={safeUrl(item.image_url)} alt={item.title} loading="lazy" className={`w-full h-48 border-b-3 border-black ${kind === 'committee' ? 'object-contain bg-cyan-50' : 'object-cover'}`} />}
+        {kind === 'documentation' ? <DocumentationVisual item={item} compact /> : <PhotoPreview url={item.image_url} title={item.title} compact portrait={kind === 'committee'} />}
         <div className={`${config.color} border-b-2 border-black px-4 py-2 flex flex-wrap gap-2 justify-between text-xs font-black`}><span>{config.emoji} {item.details.category || item.details.position || item.details.progress || config.label}</span>{isAdmin && <span>{({ published: 'Terbit', draft: 'Draf', archived: 'Arsip' })[item.status]}</span>}</div>
         <div className="p-5 flex-1 flex flex-col gap-3">
           <h3 className="font-black text-lg break-words">{item.title}</h3>

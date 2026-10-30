@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { documentationMedia } from './model';
 
-function GooglePhotosPreview({ url, title, frame, compact }: { url: string; title: string; frame: string; compact: boolean }) {
+export function GooglePhotosPreview({ url, title, frame, compact }: { url: string; title: string; frame: string; compact: boolean }) {
   const [result, setResult] = useState<{ url: string; imageUrl: string; failed: boolean } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
