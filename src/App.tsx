@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { OpeningIntro } from './components/OpeningIntro';
 import AttendanceForm from './components/AttendanceForm';
 import { AttendanceAdmin } from './components/AttendanceAdmin';
 import {
@@ -62,6 +63,17 @@ export default function App() {
   const isPublicAttendance =
     normalizedPath === '/absensi' ||
     new URLSearchParams(window.location.search).get('absen') === '1';
+  const [showOpening, setShowOpening] = useState(() => {
+    if (isPublicAttendance || activeTab !== 'home') return false;
+    try { return sessionStorage.getItem('kkg-opening-seen-v1') !== '1'; }
+    catch { return true; }
+  });
+  const homeContainer = useRef<HTMLElement>(null);
+  const finishOpening = useCallback(() => {
+    try { sessionStorage.setItem('kkg-opening-seen-v1', '1'); } catch { /* The opening also works without browser storage. */ }
+    setShowOpening(false);
+    window.requestAnimationFrame(() => homeContainer.current?.focus({ preventScroll: true }));
+  }, []);
 
   // Remote sync runs in the background; cached/default data renders immediately.
   useEffect(() => {
@@ -488,8 +500,8 @@ export default function App() {
   };
 
 
-  // Show loading spinner while Supabase syncs
-  if (isLoading) {
+  // The portal renders while it syncs; public attendance waits for verified data.
+  if (isLoading && isPublicAttendance) {
     return (
       <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -536,7 +548,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] text-gray-900 font-sans selection:bg-yellow-300 selection:text-black">
+    <>
+    {showOpening && <OpeningIntro onComplete={finishOpening} />}
+    <div inert={showOpening} aria-hidden={showOpening || undefined} className="min-h-screen bg-[#faf8f5] text-gray-900 font-sans selection:bg-yellow-300 selection:text-black">
       {/* Main Navbar Header */}
       <Navbar
         schedules={schedules}
@@ -550,7 +564,7 @@ export default function App() {
       />
 
       {/* Main Page Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+      <main ref={homeContainer} tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 focus:outline-none">
         {adminWriteError && <div role="alert" className="portal-error mb-6 flex items-start justify-between gap-3"><span>{adminWriteError}</span><button type="button" className="font-black" aria-label="Tutup pesan kesalahan" onClick={() => setAdminWriteError('')}>×</button></div>}
         {activeTab === 'home' && (
           <Dashboard
@@ -722,8 +736,10 @@ export default function App() {
           <p className="text-[10px] text-gray-400">
             Satu Guru, Satu Vibe, Satu Tujuan • Gen Z & Mobile Friendly Edition
           </p>
+          {activeTab === 'home' && <button type="button" onClick={() => setShowOpening(true)} className="inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-bold text-purple-700 underline underline-offset-4 hover:bg-purple-50">Putar opening</button>}
         </div>
       </footer>
     </div>
+    </>
   );
 }
