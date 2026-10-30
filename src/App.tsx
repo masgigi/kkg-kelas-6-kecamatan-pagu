@@ -64,13 +64,11 @@ export default function App() {
     normalizedPath === '/absensi' ||
     new URLSearchParams(window.location.search).get('absen') === '1';
   const [showOpening, setShowOpening] = useState(() => {
-    if (isPublicAttendance || activeTab !== 'home') return false;
-    try { return sessionStorage.getItem('kkg-opening-seen-v1') !== '1'; }
-    catch { return true; }
+    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    return !isPublicAttendance && (activeTab === 'home' || navigation?.type === 'reload');
   });
   const homeContainer = useRef<HTMLElement>(null);
   const finishOpening = useCallback(() => {
-    try { sessionStorage.setItem('kkg-opening-seen-v1', '1'); } catch { /* The opening also works without browser storage. */ }
     setShowOpening(false);
     window.requestAnimationFrame(() => homeContainer.current?.focus({ preventScroll: true }));
   }, []);
